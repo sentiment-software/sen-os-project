@@ -1,0 +1,10 @@
+### IDEs
+.idea/
+.vscode/
+*.vsproj
+
+### Compiler outputs
+/target/
+/out/
+
+# TODO: add ignores on the go
