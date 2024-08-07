@@ -6,6 +6,5 @@ if (!(Test-Path -Path $target)) {
     [void](New-Item -Type Directory -Force -Path $target)
 }
 
-Write-Host "Compile bootloader (NASM)"
-Write-Host "nasm $source\bootloader\bootloader.asm -f bin -o $target\bootloader.bin"
-& nasm $source\bootloader\bootloader.asm -f bin -o $target\bootloader.bin
+Write-Host "Compile boot0 (NASM)"
+& nasm $source\boot\boot0.asm -f bin -o $target\boot0.bin
