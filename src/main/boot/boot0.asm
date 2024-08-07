@@ -21,13 +21,23 @@ mode32_start:
   mov ss, ax                ; Set the stack segment register to the valid data segment
   mov esp, 0x90000          ; Set the stack pointer to 0x90000 (in free memory space of the first MB)
 
-  ; Test by printing to the screen using 32-bit instructions and addressing
-  ; If we're not in protected mode here, this will fail
+; Test: clear video memory
+clear_vmem:
+  mov eax, 0xb8000
+  mov cx, 1000
+clear_vmem_loop:
+  mov word [ds:eax], 0x0720
+  add eax, 2
+  loop clear_vmem_loop
+
+; Test: write to video memory
+print_p:
   mov byte [ds:0xb8000], 'P'  ; ASCII for P
   mov byte [ds:0xb8001], 0x2a ; Set color mode
 
+; hang around
 keep_alive:
-  jmp keep_alive  ; hang around
+  jmp keep_alive
 
 ; Global Descriptor Table
 ; See: https://github.com/sentiment-software/sen-os-project/wiki/Bootloader
@@ -51,10 +61,10 @@ gdt_data:                   ; GDT- Data segment
   db 0
 gdt_end:                    ; GDT - End address
 
-gdt_desc:                   ; GDT meta-descriptor
+; GDT meta-descriptor
+gdt_desc:
   dw gdt_end - gdt - 1      ; Calculate length (compile time)
   dd gdt                    ; Set GDT Address
-
 
 times 510 - ($ - $$) db 0   ; Pad to 510 bytes
 dw 0xaa55                   ; Boot signature at 511:512 bytes
