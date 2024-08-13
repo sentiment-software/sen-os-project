@@ -1,5 +1,10 @@
 [bits 16]
 
+%define PAGE_PRESENT (1 << 0)
+%define PAGE_WRITE   (1 << 1)
+%define CODE_SEG      0x0008
+%define PAGING_DATA   0x9000
+
 boot1_main:
   mov si, msg_boot1_start
   call mode16_print
@@ -13,31 +18,14 @@ boot1_main:
 
   call mode16_enable_a20
   jmp halt
-  ;call init_paging
-  ;call remap_pic
-  ;call init_mode64
+  call init_paging
+  call remap_pic
+  call init_mode64
 
   .mode64_not_supported:
     mov si, msg_mode64_unsupported
     call mode16_print
     jmp halt
-
-check_mode64_support:
-  mov eax, 0x80000000 ; Test if extended processor info in available.
-  cpuid
-  cmp eax, 0x80000001
-  jb .not_supported
-
-  mov eax, 0x80000001 ; After calling CPUID with EAX = 0x80000001,
-  cpuid               ; all AMD64 compliant processors have the longmode-capable-bit
-  test edx, (1 << 29) ; (bit 29) turned on in the EDX (extended feature flags).
-
-  jz .not_supported   ; If it's not set, there is no long mode.
-  ret
-
- .not_supported:
-    xor eax, eax
-    ret
 
 ; Enable the A20 line using BIOS, keyboard controller or IO92 port.
 mode16_enable_a20:
@@ -196,6 +184,117 @@ mode16_enable_a20_io92:
   out 0x92, al ; Write to port 0x92
  .return:
    ret
+
+init_paging:
+  mov edi, PAGING_DATA ; Point edi to a free space to create the paging structures.
+
+  ; Zero out the 16KiB buffer. Since we are doing a rep stosd, count should be bytes/4.
+  push di         ; Save DI as REP STOSD alters it.
+  mov ecx, 0x1000
+  xor eax, eax
+  cld
+  rep stosd
+  pop di          ; Get DI back.
+
+  ; Build the Page Map Level 4. ES:DI points to the Page Map Level 4 table.
+  lea eax, [es:di + 0x1000]         ; EAX = Address of the Page Directory Pointer Table.
+  or eax, PAGE_PRESENT | PAGE_WRITE ; OR EAX with the flags (present flag, writable flag).
+  mov [es:di], eax                  ; Store the value of EAX as the first PML4E.
+
+  ; Build the Page Directory Pointer Table.
+  lea eax, [es:di + 0x2000]         ; Put the address of the Page Directory in to EAX.
+  or eax, PAGE_PRESENT | PAGE_WRITE ; OR EAX with the flags (present flag, writable flag).
+  mov [es:di + 0x1000], eax         ; Store the value of EAX as the first PDPTE.
+
+  ; Build the Page Directory.
+  lea eax, [es:di + 0x3000]          ; Put the address of the Page Table in to EAX.
+  or eax, PAGE_PRESENT | PAGE_WRITE  ; OR EAX with the flags (present flag, writable flag).
+  mov [es:di + 0x2000], eax          ; Store to value of EAX as the first PDE.
+
+  push di                            ; Save DI
+  lea di, [di + 0x3000]              ; Point DI to the page table.
+  mov eax, PAGE_PRESENT | PAGE_WRITE ; Move the flags into EAX - and point it to 0x0000.
+
+  ; Build the Page Table.
+  .loop_page_table:
+    mov [es:di], eax
+    add eax, 0x1000
+    add di, 8
+    cmp eax, 0x200000                 ; End after 2MiB
+    jb .loop_page_table
+
+  pop di                              ; Restore DI
+  ret
+
+; Remaps the Programmable Interrupt Controller
+; This is needed because in long mode IRQ 0-15 conflicts with the CPU exceptions.
+; Leaves all IRQs disabled until a proper IDT is set later in the kernel)
+remap_pic:
+  push ax
+
+  mov al, 0xFF       ; Disable IRQs
+  out PIC1_DATA, al
+  out PIC2_DATA, al
+  nop
+  nop
+
+  mov al, ICW1_INIT | ICW1_ICW4 ; ICW1: Send initialization command (= 0x11) to both PICs
+  out PIC1_COMMAND, al
+  out PIC2_COMMAND, al
+  mov al, 0x20       ; ICW2: Set vector offset of 1st PIC to 0x20 (i.e. IRQ0 => INT 32)
+  out PIC1_DATA, al
+  mov al, 0x28       ; ICW2: Set vector offset of 2nd PIC to 0x28 (i.e. IRQ8 => INT 40)
+  out PIC2_DATA, al
+  mov al, 4          ; ICW3: tell 1st PIC that there is a 2nd PIC at IRQ2 (= 00000100)
+  out PIC1_DATA, al
+  mov al, 2          ; ICW3: tell 2nd PIC its "cascade" identity (= 00000010)
+  out PIC2_DATA, al
+  mov al, ICW4_8086  ; ICW4: Set mode to 8086/88 mode
+  out PIC1_DATA, al
+  out PIC2_DATA, al
+
+  mov al, 0xFF       ; OCW1: mask all interrupts
+  out PIC1_DATA, al
+  out PIC2_DATA, al
+
+  pop ax
+  ret
+
+; Checks whether long mode is supported
+check_mode64_support:
+  mov eax, 0x80000000 ; Test if extended processor info in available.
+  cpuid
+  cmp eax, 0x80000001
+  jb .not_supported
+
+  mov eax, 0x80000001 ; After calling CPUID with EAX = 0x80000001,
+  cpuid
+  test edx, (1 << 29) ; (bit 29) turned on in the EDX (extended feature flags).
+
+  jz .not_supported   ; If it's not set, there is no long mode.
+  ret
+
+ .not_supported:
+    xor eax, eax
+    ret
+
+init_mode64:
+  mov edi, PAGING_DATA      ; Move paging data to EDI
+  mov eax, 10100000b        ; Set PAE and PGE bits in CR4
+  mov cr4, eax
+  mov edx, edi              ; Set CR3 to the PML4
+  mov cr3, edx
+  mov ecx, 0xc0000080       ; Read from EFER MSR
+  rdmsr
+  or eax, 0x00000100        ; Set the Long Mode Enable bit
+  wrmsr
+  mov ebx, cr0
+  or ebx, 0x80000001
+  mov cr0, ebx              ; Long mode, paging and protected mode enabled
+
+  lgdt[gdt_desc]            ; Load the GDT into GDTR
+
+  jmp CODE_SEG:kernel_main  ; Set CS with 64-bit segment and jump to the good stuff.
 
 ; Global Descriptor Table
 ; Read/Write, Non-Conforming, Expand-Down
