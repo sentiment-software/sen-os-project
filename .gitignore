@@ -7,4 +7,7 @@
 /target/
 /out/
 
+### Memory dumps
+*.mem
+
 # TODO: add ignores on the go
