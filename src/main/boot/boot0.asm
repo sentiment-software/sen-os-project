@@ -25,8 +25,8 @@ boot_start:
     mov si, msg_boot0_ok
     call mode16_print
 
-    ;;; jmp boot1_main
-    jmp halt
+    jmp boot1_main           ; Jump to boot1
+    jmp halt                 ; Safely halt in case we somehow return here from boot1
 
 mode16_read_disk:
   .verify_sector_count:
@@ -89,9 +89,6 @@ dap:
   .higherLBA:     dd 0x0  ; upper 32 bits of 48-bit starting LBA
 
 disk db 0x80
-
-msg_disk_result_chr1 dw 1
-msg_disk_result_chr2 dw 1
 
 msg_disk_error dw 20
 db 'Boot 0: DISK ERROR', 13, 10
