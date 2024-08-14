@@ -4,7 +4,6 @@
 boot_start:
   jmp 0x0:.mode16_main      ; Reload CS to 0 to fix boot segment discrepancy
   .mode16_main:
-    sti ; TODO: test if qemu clears ints
     xor ax, ax              ; Set segment registers to 0
     mov ds, ax
     mov es, ax
@@ -50,10 +49,10 @@ mode16_read_disk:
     mov si, dap
     mov ah, 0x42
     int 0x13
-    jc .print_disk_result_code
+    jc .disk_error
     ret
 
-  .print_disk_result_code: ; See: https://www.ctyme.com/intr/rb-0606.htm#Table234
+  .disk_error:
     mov si, msg_disk_error
     call mode16_print
     jmp halt
@@ -93,7 +92,7 @@ disk db 0x80
 msg_disk_error dw 20
 db 'Boot 0: DISK ERROR', 13, 10
 
-msg_boot0_ok dw 11
+msg_boot0_ok dw 12
 db 'Boot 0: OK', 13, 10
 
 times 510 - ($ - $$) db 0   ; Pad to 510 bytes

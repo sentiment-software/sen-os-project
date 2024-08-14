@@ -1,17 +1,15 @@
-[bits 64]                      ; Use 64 bit instruction set in long mode (I really wanted to write this for a while)
-
-%define DATA_SEG    0x0010
-%define VRAM       0xB8000
+[bits 64]                        ; Use 64 bit instruction set in long mode
+                                 ; I really wanted to write that for a while
 
 kernel_main:
-  mov ax, DATA_SEG              ; Set up segment registers
+  mov ax, 0x10                   ; Set up segment registers
   mov ds, ax
   mov es, ax
   mov fs, ax
   mov gs, ax
   mov ss, ax
 
-  mov edi, 0xb8000
+  mov edi, 0xb8000               ; Point to VRAM
 
   ; Test me!
   mov rax, 0x1F6C1F6C1F651F48
@@ -21,6 +19,6 @@ kernel_main:
   mov rax, 0x1F211F641F6C1F72
   mov [edi + 16], rax
 
-  .halt:
+  .halt_kernel:
     hlt
-    jmp .halt
+    jmp .halt_kernel

@@ -10,53 +10,49 @@ boot1_main:
   call mode16_print
 
   call check_mode64_support
-  test eax, eax
-  jz .mode64_not_supported
-
-  mov si, msg_mode64_supported
-  call mode16_print
-
   call mode16_enable_a20
-  jmp halt
   call init_paging
   call remap_pic
   call init_mode64
-
-  .mode64_not_supported:
-    mov si, msg_mode64_unsupported
-    call mode16_print
-    jmp halt
+  ; >> Cannot safely halt here as we might be in long mode.
+  ; >> Expecting kernel code to safely handle errors.
 
 ; Enable the A20 line using BIOS, keyboard controller or IO92 port.
 mode16_enable_a20:
   call mode16_check_a20
-  test ax,ax
+  test ax, ax
   jnz .return
 
   mov si, msg_a20_enable_with_bios
   call mode16_print
   call mode16_enable_a20_bios
   call mode16_check_a20
-  cmp ax, ax
+  test ax, ax
   jnz .return
 
   mov si, msg_a20_enable_with_keyboard
   call mode16_print
   call mode16_enable_a20_keyboard
   call mode16_check_a20
-  cmp ax, ax
+  test ax, ax
   jnz .return
 
   mov si, msg_a20_enable_with_io92
   call mode16_print
   call mode16_enable_a20_io92
   call mode16_check_a20
-  cmp ax, ax
+  test ax, ax
   jnz .return
 
-  jmp halt               ; We couldn't enable A20, halt the CPU
+  mov si, msg_a20_disabled
+  call mode16_print
+  .halt:
+    hlt
+    jmp .halt               ; We couldn't enable A20, halt the CPU
 
   .return:
+    mov si, msg_a20_enabled
+    call mode16_print
     ret
 
 ; Checks whether A20 line is enabled.
@@ -84,19 +80,11 @@ mode16_check_a20:
   mov byte [es:di], 0x00      ; [es:di] is 0x0000:0x0500
   mov byte [ds:si], 0xFF      ; [ds:si] is 0xFFFF:0x0510
   cmp byte [es:di], 0xFF      ; If the A20 line is disabled, [es:di] will contain 0xFF
-  je .a20_disabled            ; A20 disabled
-  jmp .a20_enabled            ; A20 enabled
-  .a20_enabled:
-    mov si, msg_a20_enabled
-    call mode16_print
-    mov ax, 1
-    jmp .restore_values
+  mov ax, 0                   ; A20 disabled
+  je .a20_disabled
+  mov ax, 1                   ; A20 enabled
+
   .a20_disabled:
-    mov si, msg_a20_disabled
-    call mode16_print
-    mov ax, 0
-    jmp .restore_values
-  .restore_values:
     pop dx
     mov byte [ds:si], dl
     pop dx
@@ -168,7 +156,7 @@ a20wait:
   jnz     a20wait
   ret
 
-a20wait2: ; TODO: check if needed
+a20wait2:
   in      al, 0x64
   test    al, 1
   jz      a20wait2
@@ -186,29 +174,30 @@ mode16_enable_a20_io92:
    ret
 
 init_paging:
-  mov edi, PAGING_DATA ; Point edi to a free space to create the paging structures.
+  mov si, msg_init_paging
+  call mode16_print
+  mov edi, PAGING_DATA              ; Point edi to a free space to create the paging structures.
 
-  ; Zero out the 16KiB buffer. Since we are doing a rep stosd, count should be bytes/4.
-  push di         ; Save DI as REP STOSD alters it.
+  push di                           ; Save DI as REP STOSD alters it.
   mov ecx, 0x1000
   xor eax, eax
   cld
   rep stosd
-  pop di          ; Get DI back.
+  pop di                            ; Get DI back.
 
   ; Build the Page Map Level 4. ES:DI points to the Page Map Level 4 table.
   lea eax, [es:di + 0x1000]         ; EAX = Address of the Page Directory Pointer Table.
-  or eax, PAGE_PRESENT | PAGE_WRITE ; OR EAX with the flags (present flag, writable flag).
+  or eax, PAGE_PRESENT | PAGE_WRITE ; Set flags
   mov [es:di], eax                  ; Store the value of EAX as the first PML4E.
 
   ; Build the Page Directory Pointer Table.
   lea eax, [es:di + 0x2000]         ; Put the address of the Page Directory in to EAX.
-  or eax, PAGE_PRESENT | PAGE_WRITE ; OR EAX with the flags (present flag, writable flag).
+  or eax, PAGE_PRESENT | PAGE_WRITE ; Set flags
   mov [es:di + 0x1000], eax         ; Store the value of EAX as the first PDPTE.
 
   ; Build the Page Directory.
   lea eax, [es:di + 0x3000]          ; Put the address of the Page Table in to EAX.
-  or eax, PAGE_PRESENT | PAGE_WRITE  ; OR EAX with the flags (present flag, writable flag).
+  or eax, PAGE_PRESENT | PAGE_WRITE  ; Set flags
   mov [es:di + 0x2000], eax          ; Store to value of EAX as the first PDE.
 
   push di                            ; Save DI
@@ -260,23 +249,28 @@ remap_pic:
   pop ax
   ret
 
-; Checks whether long mode is supported
+; Checks whether long mode is supported.
+; If long mode is not supported, we stop the execution and halt the CPU.
+; TODO: to support mode32, instead of halting, we can return the result and let main code manage.
 check_mode64_support:
-  mov eax, 0x80000000 ; Test if extended processor info in available.
+  mov eax, 0x80000000            ; Test whether cpuid is available.
   cpuid
   cmp eax, 0x80000001
-  jb .not_supported
+  jb .mode64_not_supported
 
-  mov eax, 0x80000001 ; After calling CPUID with EAX = 0x80000001,
+  mov eax, 0x80000001            ; Call CPUID with EAX = 0x80000001
   cpuid
-  test edx, (1 << 29) ; (bit 29) turned on in the EDX (extended feature flags).
+  test edx, (1 << 29)            ; It sets bit 29 in the EDX if long mode is supported.
+  jz .mode64_not_supported       ; If it's not set, long mode is not supported.
 
-  jz .not_supported   ; If it's not set, there is no long mode.
+  mov si, msg_mode64_supported   ; Print long mode is supported message
+  call mode16_print
   ret
 
- .not_supported:
-    xor eax, eax
-    ret
+ .mode64_not_supported:
+    mov si, msg_mode64_unsupported
+    call mode16_print
+    jmp halt                      ; If long mode is not supported, we halt the CPU
 
 init_mode64:
   mov edi, PAGING_DATA      ; Move paging data to EDI
@@ -338,6 +332,8 @@ msg_a20_enable_with_keyboard dw 45
 db 'Boot 1: A20 ENABLE WITH KEYBOARD CONTROLLER', 13, 10
 msg_a20_enable_with_io92 dw 30
 db 'Boot 1: A20 ENABLE WITH IO92', 13, 10
+msg_init_paging dw 21
+db 'Boot 1: INIT PAGING', 13, 10
 
 ; Constants
 PIC1_COMMAND    equ 0x20 ; Command port of 1st PIC
