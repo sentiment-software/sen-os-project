@@ -1,31 +1,30 @@
-[bits 16]                   ; Use 16-bit instruction set for real mode
-[org 0x7c00]                ; Set origin address to the boot sector address
+[bits 16]                                     ; Use 16-bit instruction set for real mode
+[org 0x7c00]                                  ; Set origin address to the boot sector address
 
 boot_start:
-  jmp 0x0:.mode16_main      ; Reload CS to 0 to fix boot segment discrepancy
-  .mode16_main:
-    xor ax, ax              ; Set segment registers to 0
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-    mov sp, boot_start      ; Set down-growing stack pointer to the start of the bootloader
-    cld                     ; Clear direction flag
+  jmp 0x0:mode16_main                         ; Reload CS to 0 to fix boot segment discrepancy
 
-  .mode16_load_boot1:
-    mov [disk], dl                              ; Store disk number of bootable disk
-    mov ax, (boot1_start - boot0_start) / 512   ; Start sector
-    mov cx, (kernel_end - boot1_start) / 512    ; Number of sectors
-    mov bx, boot1_start                         ; Buffer offset
-    xor dx, dx                                  ; Buffer segment
-    call mode16_read_disk                       ; Read upper boot stages from disk
+mode16_main:
+  xor ax, ax                                  ; Set segment registers to 0
+  mov ds, ax
+  mov es, ax
+  mov fs, ax
+  mov gs, ax
+  mov ss, ax
+  mov sp, boot_start                          ; Set down-growing stack pointer
+  cld                                         ; Clear direction flag
 
-    mov si, msg_boot0_ok
-    call mode16_print
+  mov [disk], dl                              ; Store disk number of bootable disk
+  mov ax, (boot1_start - boot0_start) / 512   ; Start sector
+  mov cx, (kernel_end - boot1_start) / 512    ; Number of sectors
+  mov bx, boot1_start                         ; Buffer offset
+  xor dx, dx                                  ; Buffer segment
+  call mode16_read_disk                       ; Read upper boot stages from disk
 
-    jmp boot1_main           ; Jump to boot1
-    jmp halt                 ; Safely halt in case we somehow return here from boot1
+  mov si, msg_boot0_ok
+  call mode16_print
+
+  jmp boot1_main                               ; Jump to boot1
 
 mode16_read_disk:
   .verify_sector_count:
@@ -79,19 +78,18 @@ halt:
 
 ; Disk Address Packet
 dap:
-  .packetSize:    db 0x10 ; size of packet = 16 bytes
-  .dapNull:       db 0    ; always 0
-  .sectorCount:   dw 0x7F ; number of sectors to load (max = 127 on some BIOS)
-  .bufferOffset:  dw 0x0  ; 16-bit offset of target buffer
-  .bufferSegment: dw 0x0  ; 16-bit segment of target buffer
-  .lowerLBA:      dd 0x0  ; lower 32 bits of 48-bit starting LBA
-  .higherLBA:     dd 0x0  ; upper 32 bits of 48-bit starting LBA
+  .packetSize:    db 0x10 ; Packet size (16 bytes)
+  .dapNull:       db 0    ; Always 0
+  .sectorCount:   dw 0x7F ; Number of sectors to load (max = 127 on some BIOS)
+  .bufferOffset:  dw 0x0  ; Offset of target buffer (16-bits)
+  .bufferSegment: dw 0x0  ; Segment of target buffer (16-bits)
+  .lowerLBA:      dd 0x0  ; Lower 32 bits of 48-bit starting LBA
+  .higherLBA:     dd 0x0  ; Upper 32 bits of 48-bit starting LBA
 
 disk db 0x80
 
 msg_disk_error dw 20
 db 'Boot 0: DISK ERROR', 13, 10
-
 msg_boot0_ok dw 12
 db 'Boot 0: OK', 13, 10
 
