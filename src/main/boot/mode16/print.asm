@@ -34,3 +34,18 @@ mode16_print:
   pop ax
   .return:
     ret                       ; Return
+
+;------------------------------
+; mode16_clear_screen:
+;
+; Clears the screen in real mode.
+;------------------------------
+mode16_clear_screen:
+  pusha                       ; Push GP registers (call context)
+  mov ax, 0x0700              ; Set interrupt function 7 and parameter 0 (scroll window)
+  mov bh, 0x07                ; Set color code (white on black)
+  mov cx, 0x0000              ; Set start row = 0, col = 0
+  mov dx, 0x184f              ; Set end row = 24 (0x18), col = 79 (0x4f)
+  int 0x10                    ; Call interrupt
+  popa                        ; Pop GP registers (call context)
+  ret                         ; Return

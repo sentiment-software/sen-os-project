@@ -14,7 +14,9 @@ boot0_main:
   mov sp, boot_start                          ; Set down-growing stack pointer
   cld                                         ; Clear direction flag
 
-  mov si, msg_boot0_start
+  call mode16_clear_screen                    ; Clear the screen
+
+  mov si, msg_boot0_start                     ; Print info message
   call mode16_print
 
   push dx                                     ; Pass disk number of bootable disk

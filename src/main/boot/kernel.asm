@@ -9,14 +9,14 @@ kernel_main:
   mov gs, ax
   mov ss, ax
 
-  call clear_screen
+  call mode64_clear_screen
   call print_welcome_message
 
   .halt_kernel:
     hlt
     jmp .halt_kernel
 
-clear_screen:
+mode64_clear_screen:
   push rax
   push cx
   mov edi, 0xb8000             ; Set VRAM address
