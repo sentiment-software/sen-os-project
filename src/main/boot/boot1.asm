@@ -10,15 +10,19 @@ boot1_main:
   call mode16_print
 
   call check_mode64_support
-  call mode16_enable_a20
+  call enable_a20
   call init_paging
   call remap_pic
   call init_mode64
   ; >> Cannot safely halt here as we might be in long mode.
   ; >> Expecting kernel code to safely handle errors.
 
-; Enable the A20 line using BIOS, keyboard controller or IO92 port.
-mode16_enable_a20:
+;----------------------------------------
+; enable_a20:
+; ~ Enables the A20 line.
+; ~ This method tries the BIOS, Keyboard Controller and IO port 92.
+;----------------------------------------
+enable_a20:
   call mode16_check_a20
   test ax, ax
   jnz .return
