@@ -1,3 +1,4 @@
+%include "src/main/boot/definitions.asm"
 boot0_start:
   times 90 db 0
   %include "src/main/boot/boot0.asm"

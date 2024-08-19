@@ -1,9 +1,5 @@
 [bits 16]
 
-; ===== Constants
-%define CODE_A20_DISABLED  0
-%define CODE_A20_ENABLED   1
-
 ; ===== Messages
 msg_a20_enabled dw 21
 db 'Boot 1: A20 ENABLED', 13, 10
@@ -94,9 +90,9 @@ test_a20:
   mov byte [es:di], 0x00      ; [es:di] is 0x0000:0x0500
   mov byte [ds:si], 0xff      ; [ds:si] is 0xFFFF:0x0510
   cmp byte [es:di], 0xff      ; If the A20 line is disabled, [es:di] will contain 0xFF
-  mov ax, CODE_A20_DISABLED   ; A20 disabled
+  mov ax, FALSE               ; A20 disabled
   je .a20_disabled
-  mov ax, CODE_A20_ENABLED    ; A20 enabled
+  mov ax, TRUE                ; A20 enabled
 
   .a20_disabled:
     pop dx                    ; Restore registers (call context)

@@ -1,10 +1,5 @@
 [bits 16]
 
-%define CODE_DISK_OK         1
-%define CODE_DISK_ERROR      0
-%define CODE_METHOD_ERROR    2
-%define SECTOR_LIMIT       127
-
 ;------------------------------
 ; mode16_read_disk:
 ;
@@ -26,8 +21,8 @@
 ;
 ; Output:
 ;   Result code is pushed to stack:
-;     0 = Success
-;     1 = Disk error
+;     FALSE = Success
+;     TRUE  = Disk error
 ;------------------------------
 mode16_read_disk:
   pop word [ret_ptr]                        ; Pop the return pointer and save it
@@ -73,11 +68,11 @@ mode16_read_disk:
     jmp .read_loop                          ; Else loop
   .disk_ok:
     popa                                    ; Restore GP registers (call context)
-    push CODE_DISK_OK                       ; Push the OK return code - must be after popa
+    push TRUE                               ; Push the OK return code - must be after popa
     jmp .return                             ; Jump to return
   .disk_error:
     popa                                    ; Restore GP registers (call context)
-    push CODE_DISK_ERROR                    ; Push the error return code - must be after popa
+    push FALSE                              ; Push the error return code - must be after popa
   .return:
     push word [ret_ptr]                     ; Push the return pointer value
     mov word [ret_ptr], 0                   ; Clear the variable

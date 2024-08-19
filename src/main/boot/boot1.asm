@@ -1,47 +1,40 @@
 [bits 16]
 
-
-%define CODE_SEG      0x0008
-
-
 boot1_main:
   mov si, msg_boot1_start
   call mode16_print
 
-  call check_mode64_support
+  call has_cpuid                 ; Test CPUID
+  cmp eax, FALSE
+  je .cpuid_not_supported
+  mov si, msg_cpuid_supported
+  call mode16_print
+
+  call has_cpuid_mode64          ; Test CPUID.Mode64
+  cmp eax, FALSE
+  je .mode64_not_supported
+  mov si, msg_mode64_supported
+  call mode16_print
+
   call enable_a20
   call init_paging
   call remap_pic
   call init_mode64
 
+  .mode64_not_supported:
+    mov si, msg_mode64_unsupported
+    call mode16_print
+    call halt
+  .cpuid_not_supported:
+    mov si, msg_cpuid_unsupported
+    call mode16_print
+    call halt
+
 ; ===== Includes
 %include "src/main/boot/mode16/a20.asm"
 %include "src/main/boot/mode16/paging.asm"
 %include "src/main/boot/mode16/pic.asm"
-
-
-; Checks whether long mode is supported.
-; If long mode is not supported, we stop the execution and halt the CPU.
-; TODO: to support mode32, instead of halting, we can return the result and let main code manage.
-check_mode64_support:
-  mov eax, 0x80000000            ; Test whether cpuid is available.
-  cpuid
-  cmp eax, 0x80000001
-  jb .mode64_not_supported
-
-  mov eax, 0x80000001            ; Call CPUID with EAX = 0x80000001
-  cpuid
-  test edx, (1 << 29)            ; It sets bit 29 in the EDX if long mode is supported.
-  jz .mode64_not_supported       ; If it's not set, long mode is not supported.
-
-  mov si, msg_mode64_supported   ; Print long mode is supported message
-  call mode16_print
-  ret
-
- .mode64_not_supported:
-    mov si, msg_mode64_unsupported
-    call mode16_print
-    jmp halt                      ; If long mode is not supported, we halt the CPU
+%include "src/main/boot/mode16/cpuid.asm"
 
 init_mode64:
   mov edi, PAGING_DATA      ; Move paging data to EDI
@@ -59,7 +52,7 @@ init_mode64:
 
   lgdt[gdt_desc]            ; Load the GDT into GDTR
 
-  jmp CODE_SEG:kernel_main  ; Set CS with 64-bit segment and jump to the good stuff.
+  jmp CODE_SEG:kernel_main  ; Jump to kernel code
 
 ; Global Descriptor Table
 ; Read/Write, Non-Conforming, Expand-Down
@@ -88,10 +81,12 @@ gdt_desc:
 
 ; Messages
 msg_boot1_start dw 15
-db 'Boot 1: START', 13, 10
-msg_mode64_supported dw 26
-db 'Boot 1: MODE64 SUPPORTED', 13, 10
-msg_mode64_unsupported dw 28
-db 'Boot 1: MODE64 UNSUPPORTED', 13, 10
-
-
+db 'Boot 1: Start', 13, 10
+msg_cpuid_supported dw 25
+db 'Boot 1: CPUID supported', 13, 10
+msg_cpuid_unsupported dw 29
+db 'Boot 1: CPUID not supported', 13, 10
+msg_mode64_supported dw 29
+db 'Boot 1: Long mode supported', 13, 10
+msg_mode64_unsupported dw 33
+db 'Boot 1: Long mode not supported', 13, 10

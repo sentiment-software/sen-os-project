@@ -1,10 +1,5 @@
 [bits 16]
 
-; ===== Constants
-%define PAGE_PRESENT (1 << 0)
-%define PAGE_WRITE   (1 << 1)
-%define PAGING_DATA   0x9000
-
 ; ===== Messages
 msg_init_paging dw 21
 db 'Boot 1: INIT PAGING', 13, 10

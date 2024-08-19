@@ -19,15 +19,15 @@ boot0_main:
   mov si, msg_boot0_start                     ; Print info message
   call mode16_print
 
-  push dx                                     ; Pass disk number of bootable disk
-  push dword ((boot1_start-boot0_start)/512)  ; Pass start sector
-  push word ((kernel_end-boot1_start)/512)    ; Pass sector count
-  push word boot1_start                       ; Pass buffer offset
-  push word 0x0                               ; Pass buffer segment
-  call mode16_read_disk                       ; Read upper boot stages from disk
+  push dx                                        ; Pass disk number of bootable disk
+  push dword ((boot1_start - boot0_start) / 512) ; Pass start sector
+  push word ((kernel_end - boot1_start) / 512)   ; Pass sector count
+  push word boot1_start                          ; Pass buffer offset
+  push word 0x0                                  ; Pass buffer segment
+  call mode16_read_disk                          ; Read upper boot stages from disk
 
   pop ax                                      ; Pop return code to AX
-  cmp ax, 1                                   ; If AX = 1,
+  cmp ax, TRUE                                ; If AX = TRUE,
   je .print_disk_ok                           ;   then disk read was OK
   mov si, msg_disk_error                      ; Else print an error message and halt
   call mode16_print
@@ -49,13 +49,13 @@ boot0_main:
 
 ; ===== Messages
 msg_boot0_start dw 15
-  db 'Boot 0: START', 13, 10
-msg_boot0_ok dw 12
-  db 'Boot 0: OK', 13, 10
+  db 'Boot 0: Start', 13, 10
+msg_boot0_ok dw 18
+  db 'Boot 0: Finished', 13, 10
 msg_disk_ok dw 17
-  db 'Boot 0: DISK OK', 13, 10
+  db 'Boot 0: Disk Ok', 13, 10
 msg_disk_error dw 20
-  db 'Boot 0: DISK ERROR', 13, 10
+  db 'Boot 0: Disk Error', 13, 10
 
 ; ===== Padding
 times 510 - ($ - $$) db 0   ; Pad to 510 bytes
