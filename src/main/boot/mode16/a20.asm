@@ -2,15 +2,15 @@
 
 ; ===== Messages
 msg_a20_enabled dw 21
-db 'Boot 1: A20 ENABLED', 13, 10
+db 'Boot 1: A20 enabled', 13, 10
 msg_a20_disabled dw 22
-db 'Boot 1: A20 DISABLED', 13, 10
+db 'Boot 1: A20 disabled', 13, 10
 msg_a20_enable_with_bios dw 30
-db 'Boot 1: A20 ENABLE WITH BIOS', 13, 10
+db 'Boot 1: A20 enable with bios', 13, 10
 msg_a20_enable_with_keyboard dw 45
-db 'Boot 1: A20 ENABLE WITH KEYBOARD CONTROLLER', 13, 10
+db 'Boot 1: A20 enable with keyboard controller', 13, 10
 msg_a20_enable_with_io92 dw 30
-db 'Boot 1: A20 ENABLE WITH IO92', 13, 10
+db 'Boot 1: A20 enable with IO92', 13, 10
 
 ;------------------------------
 ; enable_a20:

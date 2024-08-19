@@ -1,8 +1,8 @@
 [bits 16]
 
 ; ===== Messages
-msg_init_paging dw 21
-db 'Boot 1: INIT PAGING', 13, 10
+msg_init_paging dw 32
+db 'Boot 1: Initialize page tables', 13, 10
 
 ;------------------------------
 ; init_paging:

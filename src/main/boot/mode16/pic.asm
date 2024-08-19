@@ -20,10 +20,10 @@ ICW4_BUF_MASTER equ 0x0C ; Buffered mode/master
 ICW4_SFNM       equ 0x10 ; Special Fully Nested Mode
 
 ; ===== Messages
-msg_remap_pic_start dw 25
-db 'Boot 1: PIC REMAP START', 13, 10
-msg_remap_pic_ok dw 22
-db 'Boot 1: PIC REMAP OK', 13, 10
+msg_remap_pic_start dw 27
+db 'Boot 1: PIC remap started', 13, 10
+msg_remap_pic_ok dw 28
+db 'Boot 1: PIC remap finished', 13, 10
 
 ;------------------------------
 ; remap_pic:
