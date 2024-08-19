@@ -1,9 +1,8 @@
 [bits 16]
 
-%define PAGE_PRESENT (1 << 0)
-%define PAGE_WRITE   (1 << 1)
+
 %define CODE_SEG      0x0008
-%define PAGING_DATA   0x9000
+
 
 boot1_main:
   mov si, msg_boot1_start
@@ -17,48 +16,8 @@ boot1_main:
 
 ; ===== Includes
 %include "src/main/boot/mode16/a20.asm"
+%include "src/main/boot/mode16/paging.asm"
 
-init_paging:
-  mov si, msg_init_paging
-  call mode16_print
-  mov edi, PAGING_DATA              ; Point edi to a free space to create the paging structures.
-
-  push di                           ; Save DI as REP STOSD alters it.
-  mov ecx, 0x1000
-  xor eax, eax
-  cld
-  rep stosd
-  pop di                            ; Get DI back.
-
-  ; Build the Page Map Level 4. ES:DI points to the Page Map Level 4 table.
-  lea eax, [es:di + 0x1000]         ; EAX = Address of the Page Directory Pointer Table.
-  or eax, PAGE_PRESENT | PAGE_WRITE ; Set flags
-  mov [es:di], eax                  ; Store the value of EAX as the first PML4E.
-
-  ; Build the Page Directory Pointer Table.
-  lea eax, [es:di + 0x2000]         ; Put the address of the Page Directory in to EAX.
-  or eax, PAGE_PRESENT | PAGE_WRITE ; Set flags
-  mov [es:di + 0x1000], eax         ; Store the value of EAX as the first PDPTE.
-
-  ; Build the Page Directory.
-  lea eax, [es:di + 0x3000]          ; Put the address of the Page Table in to EAX.
-  or eax, PAGE_PRESENT | PAGE_WRITE  ; Set flags
-  mov [es:di + 0x2000], eax          ; Store to value of EAX as the first PDE.
-
-  push di                            ; Save DI
-  lea di, [di + 0x3000]              ; Point DI to the page table.
-  mov eax, PAGE_PRESENT | PAGE_WRITE ; Move the flags into EAX - and point it to 0x0000.
-
-  ; Build the Page Table.
-  .loop_page_table:
-    mov [es:di], eax
-    add eax, 0x1000
-    add di, 8
-    cmp eax, 0x200000                 ; End after 2MiB
-    jb .loop_page_table
-
-  pop di                              ; Restore DI
-  ret
 
 ; Remaps the Programmable Interrupt Controller
 ; This is needed because in long mode IRQ 0-15 conflicts with the CPU exceptions.
@@ -167,8 +126,7 @@ msg_mode64_supported dw 26
 db 'Boot 1: MODE64 SUPPORTED', 13, 10
 msg_mode64_unsupported dw 28
 db 'Boot 1: MODE64 UNSUPPORTED', 13, 10
-msg_init_paging dw 21
-db 'Boot 1: INIT PAGING', 13, 10
+
 
 ; Constants
 PIC1_COMMAND    equ 0x20 ; Command port of 1st PIC
