@@ -1,9 +1,9 @@
 [bits 16]
 
-%define CODE_DISK_OK       0
-%define CODE_DISK_ERROR    1
-%define CODE_METHOD_ERROR  2
-%define SECTOR_LIMIT     127
+%define CODE_DISK_OK         1
+%define CODE_DISK_ERROR      0
+%define CODE_METHOD_ERROR    2
+%define SECTOR_LIMIT       127
 
 ;------------------------------
 ; mode16_read_disk:
@@ -22,7 +22,7 @@
 ;     - [word] Disk number on the low byte (Pushed first)
 ;
 ; Working registers:
-;   EAX, BX, CX, DX, SI - saved and restored from stack.
+;   AX, BX, CX, DX, SI - saved and restored from stack.
 ;
 ; Output:
 ;   Result code is pushed to stack:
