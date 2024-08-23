@@ -14,5 +14,5 @@ init_mode64:
   or ebx, 0x80000001
   mov cr0, ebx              ; Long mode, paging and protected mode enabled
 
-  lgdt[gdt_desc]            ; Load the GDT into GDTR
+  lgdt[gdt64_desc]          ; Load the GDT into GDTR
   ret

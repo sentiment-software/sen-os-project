@@ -37,8 +37,8 @@ boot1_main:
 %include "src/main/boot/mode16/paging.asm"
 %include "src/main/boot/mode16/pic.asm"
 %include "src/main/boot/mode16/cpuid.asm"
-%include "src/main/boot/mode16/gdt64.asm"
-%include "src/main/boot/mode16/init64.asm"
+%include "src/main/boot/mode64/gdt64.asm"
+%include "src/main/boot/mode64/init64.asm"
 
 ; ===== Messages
 msg_boot1_start dw 15
