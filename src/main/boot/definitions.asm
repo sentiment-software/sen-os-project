@@ -14,5 +14,6 @@
 %define PAGE_WRITE       (1 << 1)
 %define PAGING_DATA      0x9000
 
-; GDT
-%define CODE_SEG         0x0008
+; VRAM
+%define VRAM_START       0xb8000
+%define VRAM_ADD_LINE    0xA0

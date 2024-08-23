@@ -19,9 +19,25 @@ boot1_main:
   call enable_a20                ; Enable the A20 line
   call init_paging               ; Init paging
   call remap_pic                 ; Remap PIC
-  call init_mode64               ; Enter long mode
 
-  jmp CODE_SEG:kernel_main       ; Jump to kernel code
+  ; Init long mode in _main as this code is sensitive to segment changes (RET, JMP).
+  .init_mode64:
+    cli                          ; Clear interrupts. This won't be reset here.
+    mov edi, PAGING_DATA         ; Move paging data to EDI
+    mov eax, 10100000b           ; Set PAE and PGE bits in CR4
+    mov cr4, eax
+    mov edx, edi                 ; Set CR3 to the PML4
+    mov cr3, edx
+    mov ecx, 0xc0000080          ; Read from EFER MSR
+    rdmsr
+    or eax, 0x00000100           ; Set the Long Mode Enable bit
+    wrmsr
+    mov ebx, cr0
+    or ebx, 0x80000001
+    mov cr0, ebx                 ; Long mode, paging and protected mode enabled
+
+    lgdt [gdt64_pointer]         ; Load the GDT into GDTR
+    jmp CODE_SEG_DPL0:kernel_main  ; Jump to kernel code
 
   .mode64_not_supported:
     mov si, msg_mode64_unsupported
@@ -38,7 +54,6 @@ boot1_main:
 %include "src/main/boot/mode16/pic.asm"
 %include "src/main/boot/mode16/cpuid.asm"
 %include "src/main/boot/mode64/gdt64.asm"
-%include "src/main/boot/mode64/init64.asm"
 
 ; ===== Messages
 msg_boot1_start dw 15
