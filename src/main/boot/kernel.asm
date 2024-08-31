@@ -11,7 +11,7 @@ kernel_main:
 
   call mode64_clear_screen
   call print_welcome_message
-  ;;call test_gdt64 ;TODO: this fails the test
+  ;;call test_gdt64 ; -- fails
 
   .halt_kernel:
     hlt
@@ -55,6 +55,7 @@ print_welcome_message:
 
 ; Tests GDT by trying to access memory addresses
 ; TODO: fails. Once we will have the TSS, IDT and ISRs set up, we can handle exceptions.
+; TODO: also, probably we are only in compatibility mode
 test_gdt64:
   ; Below 2MB
   mov rax, 0x00000000001ffffe
