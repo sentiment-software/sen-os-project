@@ -1,11 +1,10 @@
-[bits 16]
+[bits 32]
 
 ;------------------------------
 ; has_cpuid:
 ;
 ; Test whether the CPUID instruction is available without calling the CPUID.
 ; The method tests whether the EFALGS[21] bit can be flipped, based on Intel's manual.
-; TODO: Research - other CPUs might use different methods.
 ;
 ; Return:
 ;   EAX = 0 - CPUID is not supported
@@ -29,11 +28,11 @@ has_cpuid:
     ret
 
 ;------------------------------
-; has_mode64:
+; has_cpuid_mode64:
 ;
 ; Test whether long mode is supported using CPUID.
-; The method test the EDX[29] bit after calling CPUID.
-; TODO: Other CPUs might use different methods.
+; The method test the EDX[29] bit after calling CPUID instruction.
+; The availability of the CPUID must be tested before calling this routine (has_cpuid).
 ;
 ; Return:
 ;   AX = 0 - Long mode is not supported

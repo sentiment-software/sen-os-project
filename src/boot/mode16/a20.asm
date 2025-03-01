@@ -73,22 +73,21 @@ test_a20:
   push es
   push di
   push si
-  cli                         ; Disable interrupts
 
   xor ax, ax                  ; ax = 0
   mov es, ax                  ; es = 0
   not ax                      ; ax = 0xFFFF
   mov ds, ax                  ; ds = 0xFFFF
-  mov di, 0x0500              ; 0x0500 and 0x0510 are guaranteed to be free
-  mov si, 0x0510
+  mov di, 0x1000              ; 0x1000 and 0x1010 are guaranteed free
+  mov si, 0x1010
 
   mov dl, byte [es:di]        ; Save original values on these addresses
   push dx
   mov dl, byte [ds:si]
   push dx
 
-  mov byte [es:di], 0x00      ; [es:di] is 0x0000:0x0500
-  mov byte [ds:si], 0xff      ; [ds:si] is 0xFFFF:0x0510
+  mov byte [es:di], 0x00      ; [es:di] is 0x0000:0x1000
+  mov byte [ds:si], 0xff      ; [ds:si] is 0xFFFF:0x1010
   cmp byte [es:di], 0xff      ; If the A20 line is disabled, [es:di] will contain 0xFF
   mov ax, FALSE               ; A20 disabled
   je .a20_disabled
@@ -104,7 +103,6 @@ test_a20:
     pop es
     pop ds
     popf
-    sti
     ret
 
 ;------------------------------
@@ -141,7 +139,6 @@ enable_a20_bios:
 ; Enables A20 line using the keyboard controller.
 ;------------------------------
 enable_a20_keyboard:
-  cli                    ; Disable interrupts
   call .a20wait
   mov al, 0xad           ; Disable keyboard.
   out 0x64, al
@@ -162,7 +159,6 @@ enable_a20_keyboard:
   mov al, 0xae           ; Enable keyboard.
   out 0x64, al
   call .a20wait
-  sti                    ; Enables interrupts.
   ret
   .a20wait:
     in al, 0x64

@@ -7,4 +7,5 @@ if (!(Test-Path -Path $target)) {
 }
 
 Write-Host "Compile bootloader (NASM)"
-& nasm $source\boot\bootloader.asm -f bin -o $target\bootloader.bin
+& nasm $source\boot\boot0.asm -f bin -o $target\boot0.bin
+& nasm $source\boot\boot1.asm -f bin -o $target\boot1.bin
