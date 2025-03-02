@@ -1,69 +1,56 @@
+%include "src/boot/definitions/page.asm"
+
 [bits 32]
 
-; Setup for mapping 64MB memory with 2MB pages
-paging_setup_64MB:
-    ; Clear 12kB for PML4, PDP, PD
-    mov edi, PML4_BASE      ; 0x3000
-    mov cr3, edi
-    xor eax, eax
-    mov ecx, 0x300          ; 12kB / 4 = 3072 dwords
-    rep stosd
+; Identity maps the first 128MiB in 4kB pages
+init_pages:
+  push ebp
+  mov ebp, esp
+  push ebx
 
-    ; PML4[0] -> PDP
-    mov edi, PML4_BASE      ; 0x3000
-    mov dword [edi], PDP_BASE | 0x3  ; 0x4003 (Present + Writable)
-    mov dword [edi + 4], 0x0
+  ; Clear paging structure area in 4-byte chunks
+  xor eax, eax
+  mov ecx, (PAGE_ALLOC_END + 1) / 4
+  mov edi, PAGE_ALLOC_BASE
+  rep stosd
 
-    ; PDP[0] -> PD
-    mov edi, PDP_BASE       ; 0x4000
-    mov dword [edi], PD_BASE | 0x3   ; 0x5003
-    mov dword [edi + 4], 0x0
+  ; Setup PML4[0] -> PDP_BASE
+  mov eax, PDP_BASE | PAGE_PRESENT | PAGE_WRITE
+  mov [PML4_BASE], eax
+;  mov dword [PML4_BASE + 4], 0    ; Upper 32 bits
 
-    ; PD[0-31] -> 64MB (32 × 2MB pages)
-    mov edi, PD_BASE        ; 0x5000
-    mov eax, 0x83           ; 0x000000 | Present + Writable + 2MB Page
-    mov ecx, 32             ; 32 entries = 64MB
+  ; Setup PDP[0] -> PD_BASE
+  mov eax, PD_BASE | PAGE_PRESENT | PAGE_WRITE
+  mov [PDP_BASE], eax
+;  mov dword [PDP_BASE + 4], 0
+
+  ; Fill PD: 512 entries, each pointing to a PT
+  mov edi, PD_BASE
+  mov eax, PT_BASE | PAGE_PRESENT | PAGE_WRITE
+  mov ecx, PT_COUNT         ; 512 PTs for 1GB
   .fill_pd:
     mov [edi], eax
-    mov dword [edi + 4], 0x0
-    add eax, 0x200000       ; Next 2MB page
+;    mov dword [edi + 4], 0
+    add edi, 8              ; Next entry
+    add eax, PAGE_SIZE      ; Next PT address
+    loop .fill_pd
+
+    ; Fill PTs: 512 PTs, each with 512 entries (4KB pages)
+    mov edi, PT_BASE
+    mov eax, PAGE_PRESENT | PAGE_WRITE ; Start mapping from 0x0
+    mov ebx, PT_COUNT         ; Outer loop counter (64 PTs)
+  .fill_pts_outer:
+    mov ecx, 512            ; Inner loop: 512 entries per PT
+  .fill_pts_inner:
+    mov [edi], eax
+;    mov dword [edi + 4], 0
     add edi, 8
-    loop .fill_pd
-    ret
+    add eax, PAGE_SIZE      ; Next 4KB page
+    loop .fill_pts_inner
+    dec ebx
+    jnz .fill_pts_outer
 
-; Setup for mapping 8GB memory with 2MB pages
-paging_setup_8GB:
-  ; Clear 36KB of memory for PML4 (4KB), PDP (4KB), and 8 PDs (8 × 4KB = 32KB)
-  mov edi, PML4_BASE
-  mov cr3, edi           ; Load CR3 with PML4 address
-  xor eax, eax
-  mov ecx, 0x900         ; 36KB / 4 bytes per stosd = 9,216 dwords
-  rep stosd              ; Zero out PML4, PDP, and PDs
-
-  ; Setup PML4[0] to point to PDP
-  mov edi, PML4_BASE
-  mov dword [edi], (PDP_BASE | PAGE_PRESENT | PAGE_WRITE)
-  mov dword [edi + 4], 0x0 ; High 32 bits (0 for < 4GB)
-
-  ; Setup PDP[0-7] to point to 8 PD tables
-  mov edi, PDP_BASE
-  mov eax, (PD_BASE | PAGE_PRESENT | PAGE_WRITE) ; First PD
-  mov ecx, 8 ; 8 PDP entries
-  .fill_pdp:
-    mov [edi], eax                   ; Low 32 bits
-    mov dword [edi + 4], 0x0         ; High 32 bits
-    add eax, PD_SIZE                 ; Next PD table (4KB apart)
-    add edi, 8                       ; Next PDP entry
-    loop .fill_pdp
-
-    ; Setup 8 PD tables, each with 512 entries (2MB pages)
-    mov edi, PD_BASE
-    mov eax, PAGE_PRESENT | PAGE_WRITE | PAGE_2MB ; Start at 0x000000, Present + Writable + Page Size (2MB)
-    mov ecx, 4096                                 ; 8 PDs × 512 entries = 4096 2MB pages (8GB)
-  .fill_pd:
-    mov [edi], eax                   ; Low 32 bits
-    mov dword [edi + 4], 0x0         ; High 32 bits (0 for < 4GB)
-    add eax, 0x200000                ; Next 2MB page
-    add edi, 8                       ; Next PD entry
-    loop .fill_pd
+    pop ebx
+    mov esp, ebp
+    pop ebp
     ret

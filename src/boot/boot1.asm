@@ -46,44 +46,41 @@ protected_mode_entry:
 
   mov eax, 0
   mov ebx, msg_protected_mode_enabled
-  call mode32_print
+  call mode32_println
 
   ; Test CPUID.ID
   call has_cpuid
   cmp eax, FALSE
   je .cpuid_not_supported
-  mov ebx, msg_cpuid_supported
-  call mode32_println
+;  mov ebx, msg_cpuid_supported
+;  call mode32_println
 
   ; Test CPUID.MODE64
   call has_cpuid_mode64
   cmp eax, FALSE
   je .mode64_not_supported
-  mov ebx, msg_mode64_supported
-  call mode32_println
+;  mov ebx, msg_mode64_supported
+;  call mode32_println
 
   ; Set up page tables
-  call paging_setup_64MB
-  mov ebx, msg_paging_loaded
-  call mode32_println
+  call init_pages
+;  mov ebx, msg_paging_loaded
+;  call mode32_println
 
-  ; Remap PIC
+  ; Remap PIC (currently just disables all IRQs)
   call remap_pic
-  mov ebx, msg_remap_pic_ok
-  call mode32_println
+;  mov ebx, msg_remap_pic_ok
+;  call mode32_println
 
   ; Set up GDT and TSS
-  call setup_gdt_tss
-  mov ebx, msg_gdt_tss_loaded
-  call mode32_println
+;  call setup_gdt_tss
+;  mov ebx, msg_gdt_tss_loaded
+;  call mode32_println
 
   ; Set up IDT
   call setup_idt
-  mov ebx, msg_idt_loaded
-  call mode32_println
-
-  cli
-  hlt
+;  mov ebx, msg_idt_loaded
+;  call mode32_println
 
   ; Enter long mode
   call enter_long_mode
@@ -103,9 +100,14 @@ protected_mode_entry:
 enter_long_mode:
   mov ebx, msg_entering_long_mode
   call mode32_println
+  cli
 
   ; Load long mode GDT
   lgdt [gdt64_descriptor]
+
+  ; Load CR3 with PML4 address
+  mov eax, (PML4_BASE << 12)
+  mov cr3, eax
 
   ; Enable PAE and PGE
   mov eax, cr4
@@ -118,14 +120,16 @@ enter_long_mode:
   or eax, EFER_LME_BIT
   wrmsr
 
+  call mode32_print_registers
+  hlt
+  cli
+
   ; Enable paging
-  ; CR3 is already set to PML4_BASE in paging
   mov eax, cr0
   or eax, CR0_PG_BIT
   mov cr0, eax
 
-  cli
-  hlt
+
 
   ; Jump to 64-bit code segment
   jmp SEG_CODE_0:long_mode_entry
@@ -152,6 +156,7 @@ msg_entering_long_mode: db 'Boot 1: Entering long mode', 0
 ; ===== Long Mode =====
 [bits 64]
 long_mode_entry:
+  cli
   mov ax, SEG_DATA_0 ; Data Selector (Ring 0)
   mov ds, ax
   mov es, ax
@@ -161,7 +166,7 @@ long_mode_entry:
   mov rsp, KERN_STACK_TOP
 
   ; Load TSS
-  mov ax, SEG_TSS    ; TSS selector
+  mov ax, SEG_TSS
   ltr ax
 
   ; Load IDT

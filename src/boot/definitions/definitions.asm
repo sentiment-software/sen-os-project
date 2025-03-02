@@ -10,10 +10,7 @@ SECTOR_LIMIT equ 127
 CPUID_ID     equ (1 << 21)
 CPUID_MODE64 equ (1 << 29)
 
-; Paging
-PAGE_PRESENT equ (1 << 0)
-PAGE_WRITE   equ (1 << 1)
-PAGE_2MB     equ (1 << 7)
+
 
 ; Control registers
 CR0_PE_BIT   equ (1 << 0)

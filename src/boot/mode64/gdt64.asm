@@ -2,26 +2,35 @@
 
 ; GDT and TSS for long mode
 ; Copies the GDT and TSS to the target memory addresses
-setup_gdt_tss:
-  ; GDT
-  mov edi, GDT_BASE
-  mov esi, gdt_start
-  mov ecx, (gdt_end - gdt_start) / 4 ; 98 bytes = 24.5 dwords
-  rep movsd
+;setup_gdt_tss:
+;  ; GDT
+;  mov edi, GDT_BASE
+;  mov esi, gdt_start
+;  mov ecx, (gdt_end - gdt_start) / 4 ; 98 bytes = 24.5 dwords
+;  rep movsd
+;
+;  ; TSS
+;  mov edi, TSS_BASE
+;  mov esi, tss_start
+;  mov ecx, (tss_end - tss_start) / 4 ; 104 bytes = 26 dwords
+;  rep movsd
+;
+;  ; GDT descriptor
+;  mov word [gdt64_descriptor], GDT_END
+;  mov dword [gdt64_descriptor + 2], GDT_BASE
+;  mov dword [gdt64_descriptor + 6], 0
+;  ret
 
-  ; TSS
-  mov edi, TSS_BASE
-  mov esi, tss_start
-  mov ecx, (tss_end - tss_start) / 4 ; 104 bytes = 26 dwords
-  rep movsd
-
-  ; GDT descriptor
-  mov word [gdt64_descriptor], GDT_END
-  mov dword [gdt64_descriptor + 2], GDT_BASE
-  mov dword [gdt64_descriptor + 6], 0
-  ret
-
-tss_start:
+; ===== 64-bit mode Task State Segment =====
+; In long mode a 64-bit task state segment must exist.
+; The TSS holds information important to 64-bit mode not related to the task-switch mechanism.
+; This information includes:
+;   - RSPn: The full 64-bit canonical forms of the stack pointers (RSP) for privilege levels 0-2.
+;   - ISTn: The full 64-bit canonical forms of the Interrupt Stack Table (IST) pointers.
+;   - I/O Map Base - The 16-bit offset to the I/O permission bit map from the 64-bit TSS base.
+; The OS must create at least one 64-bit TSS after activating IA-32e mode and load it into the
+; TR register by executing the LTR instruction.
+tss64_start:
   dd 0                    ; Reserved
   dq KERN_STACK_TOP       ; RSP0 (kernel stack)
   dq 0                    ; RSP1
@@ -36,11 +45,12 @@ tss_start:
   dq 0                    ; IST7
   dd 0                    ; Reserved
   dd 0                    ; Reserved
-  dw 0                    ; I/O Map Base (none)
   dw 0                    ; Reserved
-tss_end:
+  dw 0                    ; I/O Map Base (none)
+tss64_end:
 
-gdt_start:
+; ===== 64-bit Global Descriptor Table =====
+gdt64_start:
   dq 0x0000000000000000   ; Null descriptor
   dq 0x00AF9B000000FFFF   ; Ring 0 Code (0x08)
   dq 0x00AF93000000FFFF   ; Ring 0 Data (0x10)
@@ -52,19 +62,19 @@ gdt_start:
   dq 0x00AFF3000000FFFF   ; Ring 3 Data (0x40)
 
   ; TSS Descriptor (0x48)
-  dw TSS_END                 ; Limit (low 16 bits)
-  dq TSS_BASE                ; Base (bits 0-15)
-  db 0x00                    ; Base (bits 16-23) = 0x00
-  db 0x89                    ; Type: Available TSS, Present
-  db 0x00                    ; Limit (high 4 bits) = 0, flags
-  db 0x00                    ; Base (bits 24-31) = 0x00
-  dd 0x00000000              ; Base (bits 32-63) = 0x00
-  dd 0x00000000              ; Reserved
+  dw tss64_end - tss64_start - 1 ; Limit[15:0] TSS_END
+  dq tss64_start                 ; Base[15:0] TSS_BASE
+  db 0x00                        ; Base[23:16] = 0
+  db 0x89                        ; Present, DPL-0, TSS, Execute-Only, Accessed
+  db 0x00                        ; Limit[19:16] = 0, flags
+  db 0x00                        ; Base[31:24] = 0
+  dd 0x00000000                  ; Base[63:32] = 0
+  dd 0x00000000                  ; Reserved
 
-  align 4
-    dw 0
-gdt_end:
+  align 8
+    db 0
+gdt64_end:
 
 gdt64_descriptor:
-  dw 0x0
-  dq 0x0
+  dw gdt64_end - gdt64_start - 1
+  dd gdt64_start

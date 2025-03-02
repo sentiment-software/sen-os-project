@@ -30,15 +30,15 @@ BOOT_1_SIZE     equ 0x1000
 BOOT_1_END      equ BOOT_1_BASE + BOOT_1_SIZE - 1 ; 0x16FF
 ; Page tables
 PAGE_ALLOC_BASE equ 0x1700
-PAGE_ALLOC_END  equ 0xA6FF
+PAGE_ALLOC_END  equ 0x446FF
 PML4_BASE       equ 0x1700
 PDP_BASE        equ 0x2700
 PD_BASE         equ 0x3700
-PD_TABLES       equ 1
-PD_SIZE         equ 0x1000
-PD_END          equ PD_BASE + (PD_TABLES * PD_SIZE) - 1 ; 0x46FF
+PT_BASE         equ 0x4700
+PAGE_SIZE       equ 0x1000 ; 4096
+PT_COUNT        equ 64
 ; IDT
-IDT_BASE        equ 0xA700
+IDT_BASE        equ 0x44800 ; this leaves 0x100 space after page tables
 IDT_SIZE        equ 0x1000
 IDT_END         equ IDT_BASE + IDT_SIZE - 1 ; 0xB6FF
 ; GDT + TSS
@@ -57,8 +57,8 @@ KERN_ENTRY_TOP  equ 0x7F000
 BOOT_STACK_BASE equ 0x0500
 BOOT_STACK_TOP  equ 0x06FF
 ; Protected mode stack pointer: initial value of ESP
-PM_STACK_BASE equ 0x7F000
-PM_STACK_TOP  equ 0x7FFFF
+PM_STACK_BASE equ 0x45700
+PM_STACK_TOP  equ 0x476FF
 ; Kernel stack pointer: initial value of RSP
-KERN_STACK_BASE equ 0x7F000
-KERN_STACK_TOP  equ 0x7FFFF
+KERN_STACK_BASE equ 0x45700
+KERN_STACK_TOP  equ 0x476FF
