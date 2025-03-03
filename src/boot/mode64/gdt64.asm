@@ -1,26 +1,3 @@
-[bits 32]   ; Being called from protected mode
-
-; GDT and TSS for long mode
-; Copies the GDT and TSS to the target memory addresses
-;setup_gdt_tss:
-;  ; GDT
-;  mov edi, GDT_BASE
-;  mov esi, gdt_start
-;  mov ecx, (gdt_end - gdt_start) / 4 ; 98 bytes = 24.5 dwords
-;  rep movsd
-;
-;  ; TSS
-;  mov edi, TSS_BASE
-;  mov esi, tss_start
-;  mov ecx, (tss_end - tss_start) / 4 ; 104 bytes = 26 dwords
-;  rep movsd
-;
-;  ; GDT descriptor
-;  mov word [gdt64_descriptor], GDT_END
-;  mov dword [gdt64_descriptor + 2], GDT_BASE
-;  mov dword [gdt64_descriptor + 6], 0
-;  ret
-
 ; ===== 64-bit mode Task State Segment =====
 ; In long mode a 64-bit task state segment must exist.
 ; The TSS holds information important to 64-bit mode not related to the task-switch mechanism.
