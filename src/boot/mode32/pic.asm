@@ -1,4 +1,4 @@
-[bits 16]
+[bits 32]
 
 ; ===== Constants
 PIC1_COMMAND    equ 0x20 ; Command port of 1st PIC
@@ -19,25 +19,17 @@ ICW4_BUF_SLAVE  equ 0x08 ; Buffered mode/slave
 ICW4_BUF_MASTER equ 0x0C ; Buffered mode/master
 ICW4_SFNM       equ 0x10 ; Special Fully Nested Mode
 
-; ===== Messages
-msg_remap_pic_start dw 27
-db 'Boot 1: PIC remap started', 13, 10
-msg_remap_pic_ok dw 28
-db 'Boot 1: PIC remap finished', 13, 10
-
 ;------------------------------
 ; remap_pic:
 ;
 ; Remaps the Programmable Interrupt Controller
-; This is needed because in long mode IRQ 0-15 conflicts with the CPU exceptions.
+; In long mode IRQ 0-15 conflicts with the CPU exceptions, therefore this
+; moves IRQs out of the CPU exception range (0x00-0x1F)
 ; Leaves all IRQs disabled until a proper IDT is set later in the kernel)
 ;------------------------------
 remap_pic:
   push ax                       ; Push working registers (call context)
   push si
-
-  mov si, msg_remap_pic_start   ; Print info message
-  call mode16_print
 
   mov al, 0xFF                  ; Disable IRQs
   out PIC1_DATA, al
@@ -63,9 +55,6 @@ remap_pic:
   mov al, 0xFF                  ; OCW1: mask all interrupts
   out PIC1_DATA, al
   out PIC2_DATA, al
-
-  mov si, msg_remap_pic_ok      ; Print success message
-  call mode16_print
 
   pop si                        ; Pop working registers (call context)
   pop ax

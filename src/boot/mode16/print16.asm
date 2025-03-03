@@ -25,7 +25,7 @@ mode16_print:
   add si, 2                   ; Move the pointer to the first character
   .string_loop:
     lodsb                     ; Load string byte into AL, increment SI
-    mov ah, 0x0e              ; Load interrupt function number into AH
+    mov ah, 0x0E              ; Load interrupt function number into AH
     int 0x10                  ; Call interrupt
     dec cx                    ; Decrease CX, sets ZF if 0
     jnz .string_loop          ; Loop

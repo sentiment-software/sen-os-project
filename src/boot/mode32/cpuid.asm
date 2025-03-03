@@ -1,11 +1,12 @@
-[bits 16]
+%include "src/boot/definitions/cpuid.asm"
+
+[bits 32]
 
 ;------------------------------
 ; has_cpuid:
 ;
 ; Test whether the CPUID instruction is available without calling the CPUID.
 ; The method tests whether the EFALGS[21] bit can be flipped, based on Intel's manual.
-; TODO: Research - other CPUs might use different methods.
 ;
 ; Return:
 ;   EAX = 0 - CPUID is not supported
@@ -22,18 +23,18 @@ has_cpuid:
   popfd                     ; Pop EFLAGS (call context)
   and eax, CPUID_ID         ; Test EAX & ID
   jz .returnFalse           ; If = 0, return false (CPUID is not supported)
-  mov eax, TRUE             ; Else return true (CPUID is supported)
+  mov eax, 0x1              ; Else return true (CPUID is supported)
   ret
   .returnFalse:
-    mov eax, FALSE
+    mov eax, 0x0
     ret
 
 ;------------------------------
-; has_mode64:
+; has_cpuid_mode64:
 ;
 ; Test whether long mode is supported using CPUID.
-; The method test the EDX[29] bit after calling CPUID.
-; TODO: Other CPUs might use different methods.
+; The method test the EDX[29] bit after calling CPUID instruction.
+; The availability of the CPUID must be tested before calling this routine (has_cpuid).
 ;
 ; Return:
 ;   AX = 0 - Long mode is not supported
@@ -44,8 +45,8 @@ has_cpuid_mode64:
   cpuid
   test edx, CPUID_MODE64    ; If EDX[29] is not set,
   jz .returnFalse           ; then return false
-  mov eax, TRUE             ; else return true
+  mov eax, 0x1              ; else return true
   ret
   .returnFalse:
-    mov eax, FALSE
+    mov eax, 0x0
     ret

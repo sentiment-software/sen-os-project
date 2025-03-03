@@ -1,3 +1,5 @@
+%include "src/boot/definitions/disk.asm"
+
 [bits 16]
 
 ;------------------------------
@@ -10,10 +12,11 @@
 ;
 ; Input:
 ;   Push the following stack of values before call (top is last):
-;     - [word] Buffer segment (Pushed last)
+;     - [word] Buffer segment (<- Pushed last / Stack top)
 ;     - [word] Buffer offset
-;     - [word] Number of sectors
-;     - [word] Start sector
+;     - [word] Number of sectors to read into buffer
+;     - [word] Start sector (lower 16 bits)
+;     - [word] Start sector (upper 16 bits)
 ;     - [word] Disk number on the low byte (Pushed first)
 ;
 ; Working registers:
@@ -21,15 +24,16 @@
 ;
 ; Output:
 ;   Result code is pushed to stack:
-;     FALSE = Success
-;     TRUE  = Disk error
+;     0x0  = Success
+;     0x1  = Disk error
 ;------------------------------
 mode16_read_disk:
   pop word [ret_ptr]                        ; Pop the return pointer and save it
   pop word [dap.bufferSegment]              ; Pop the DAP values
   pop word [dap.bufferOffset]
   pop word [dap.sectorCount]
-  pop dword [dap.lowerLBA]
+  pop word [dap.lowerLBA]
+  pop word [dap.lowerLBA + 2]
   pop word [disk_number]                    ; Pop the disk number
   pusha                                     ; Save GP registers (call-context)
 
@@ -68,11 +72,11 @@ mode16_read_disk:
     jmp .read_loop                          ; Else loop
   .disk_ok:
     popa                                    ; Restore GP registers (call context)
-    push TRUE                               ; Push the OK return code - must be after popa
+    push 0x0                                ; Push the OK return code - must be after popa
     jmp .return                             ; Jump to return
   .disk_error:
     popa                                    ; Restore GP registers (call context)
-    push FALSE                              ; Push the error return code - must be after popa
+    push 0x1                                ; Push the error return code - must be after popa
   .return:
     push word [ret_ptr]                     ; Push the return pointer value
     mov word [ret_ptr], 0                   ; Clear the variable
@@ -93,5 +97,5 @@ dap:
 ;------------------------------
 ; Variables
 ;------------------------------
-disk_number    dw 0x0080
-ret_ptr        dw 0x0
+disk_number    dw 0x0080  ; Disk number (Default: 0x80 = 1st floppy disk)
+ret_ptr        dw 0x0     ; Return pointer of the caller

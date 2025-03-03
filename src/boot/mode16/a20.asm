@@ -1,16 +1,16 @@
 [bits 16]
 
 ; ===== Messages
-msg_a20_enabled dw 21
-db 'Boot 1: A20 enabled', 13, 10
-msg_a20_disabled dw 22
-db 'Boot 1: A20 disabled', 13, 10
-msg_a20_enable_with_bios dw 30
-db 'Boot 1: A20 enable with bios', 13, 10
-msg_a20_enable_with_keyboard dw 45
-db 'Boot 1: A20 enable with keyboard controller', 13, 10
-msg_a20_enable_with_io92 dw 30
-db 'Boot 1: A20 enable with IO92', 13, 10
+msg_a20_enabled dw 12
+db 'A20 enabled', 13, 10
+msg_a20_disabled dw 13
+db 'A20 disabled', 13, 10
+msg_a20_enable_with_bios dw 21
+db 'A20 enable with bios', 13, 10
+msg_a20_enable_with_keyboard dw 36
+db 'A20 enable with keyboard controller', 13, 10
+msg_a20_enable_with_io92 dw 21
+db 'A20 enable with IO92', 13, 10
 
 ;------------------------------
 ; enable_a20:
@@ -49,7 +49,10 @@ enable_a20:
 
   mov si, msg_a20_disabled               ; We couldn't enable the A20 line
   call mode16_print                      ; Print error message
-  call halt                              ; Halt the CPU
+  .halt:                                 ; Halt the CPU
+    cli
+    hlt
+    jmp .halt
 
   .returnOk:
     mov si, msg_a20_enabled
@@ -73,26 +76,25 @@ test_a20:
   push es
   push di
   push si
-  cli                         ; Disable interrupts
 
   xor ax, ax                  ; ax = 0
   mov es, ax                  ; es = 0
   not ax                      ; ax = 0xFFFF
   mov ds, ax                  ; ds = 0xFFFF
-  mov di, 0x0500              ; 0x0500 and 0x0510 are guaranteed to be free
-  mov si, 0x0510
+  mov di, 0x1000              ; 0x1000 and 0x1010 are guaranteed free (TODO: they are not, but we don't see an error because the BIOS already enabled it)
+  mov si, 0x1010
 
   mov dl, byte [es:di]        ; Save original values on these addresses
   push dx
   mov dl, byte [ds:si]
   push dx
 
-  mov byte [es:di], 0x00      ; [es:di] is 0x0000:0x0500
-  mov byte [ds:si], 0xff      ; [ds:si] is 0xFFFF:0x0510
+  mov byte [es:di], 0x00      ; [es:di] is 0x0000:0x1000
+  mov byte [ds:si], 0xff      ; [ds:si] is 0xFFFF:0x1010
   cmp byte [es:di], 0xff      ; If the A20 line is disabled, [es:di] will contain 0xFF
-  mov ax, FALSE               ; A20 disabled
+  mov ax, 0x0                 ; A20 disabled
   je .a20_disabled
-  mov ax, TRUE                ; A20 enabled
+  mov ax, 0x1                 ; A20 enabled
 
   .a20_disabled:
     pop dx                    ; Restore registers (call context)
@@ -104,7 +106,6 @@ test_a20:
     pop es
     pop ds
     popf
-    sti
     ret
 
 ;------------------------------
@@ -141,7 +142,6 @@ enable_a20_bios:
 ; Enables A20 line using the keyboard controller.
 ;------------------------------
 enable_a20_keyboard:
-  cli                    ; Disable interrupts
   call .a20wait
   mov al, 0xad           ; Disable keyboard.
   out 0x64, al
@@ -162,7 +162,6 @@ enable_a20_keyboard:
   mov al, 0xae           ; Enable keyboard.
   out 0x64, al
   call .a20wait
-  sti                    ; Enables interrupts.
   ret
   .a20wait:
     in al, 0x64
