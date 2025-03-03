@@ -1,4 +1,3 @@
-%include "src/boot/definitions/definitions.asm"
 %include "src/boot/definitions/memorymap.asm"
 %include "src/boot/definitions/segments.asm"
 

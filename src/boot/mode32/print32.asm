@@ -5,8 +5,8 @@
 ; Simple implementation of a console buffer
 ; We can keep track of the printed lines, so we don't have to calculate this on the caller's side
 console32:
-  .line: dd 0
-  .col: dd 0
+  .line:   dd 0
+  .col:    dd 0
   .offset: dd VGA_PAGE_1_BASE
 
   ; Increments cursor position

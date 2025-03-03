@@ -62,14 +62,14 @@ gdt64_start:
   dq 0x00AFF3000000FFFF   ; Ring 3 Data (0x40)
 
   ; TSS Descriptor (0x48)
-  dw tss64_end - tss64_start - 1 ; Limit[15:0] TSS_END
-  dq tss64_start                 ; Base[15:0] TSS_BASE
-  db 0x00                        ; Base[23:16] = 0
-  db 0x89                        ; Present, DPL-0, TSS, Execute-Only, Accessed
-  db 0x00                        ; Limit[19:16] = 0, flags
-  db 0x00                        ; Base[31:24] = 0
-  dd 0x00000000                  ; Base[63:32] = 0
-  dd 0x00000000                  ; Reserved
+  dw tss64_end - tss64_start - 1    ; Limit[15:0]
+  dw tss64_start                    ; Base[15:0]
+  db 0x00                           ; Base[23:16]
+  db 0x89                           ; Present, DPL-0, TSS, Execute-Only, Accessed
+  db 0x00                           ; Limit[19:16] = 0, flags
+  db 0x00                           ; Base[31:24]
+  dd 0x00000000                     ; Base[63:32]
+  dd 0x00000000                     ; Reserved
 
   align 8
     db 0

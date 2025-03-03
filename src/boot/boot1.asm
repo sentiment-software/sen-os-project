@@ -1,5 +1,5 @@
-%include "src/boot/definitions/definitions.asm"
 %include "src/boot/definitions/memorymap.asm"
+%include "src/boot/definitions/registers.asm"
 %include "src/boot/definitions/segments.asm"
 %include "src/boot/definitions/vga.asm"
 
@@ -44,45 +44,22 @@ protected_mode_entry:
 
   call mode32_clear
 
-  mov eax, 0
   mov ebx, msg_protected_mode_enabled
   call mode32_println
 
   ; Test CPUID.ID
   call has_cpuid
-  cmp eax, FALSE
+  cmp eax, 0x0
   je .cpuid_not_supported
-;  mov ebx, msg_cpuid_supported
-;  call mode32_println
 
   ; Test CPUID.MODE64
   call has_cpuid_mode64
-  cmp eax, FALSE
+  cmp eax, 0x0
   je .mode64_not_supported
-;  mov ebx, msg_mode64_supported
-;  call mode32_println
 
-  ; Set up page tables
   call init_pages
-;  mov ebx, msg_paging_loaded
-;  call mode32_println
-
-  ; Remap PIC (currently just disables all IRQs)
   call remap_pic
-;  mov ebx, msg_remap_pic_ok
-;  call mode32_println
-
-  ; Set up GDT and TSS
-;  call setup_gdt_tss
-;  mov ebx, msg_gdt_tss_loaded
-;  call mode32_println
-
-  ; Set up IDT
   call setup_idt
-;  mov ebx, msg_idt_loaded
-;  call mode32_println
-
-  ; Enter long mode
   call enter_long_mode
 
   .cpuid_not_supported:
@@ -98,16 +75,8 @@ protected_mode_entry:
     hlt
 
 enter_long_mode:
-  mov ebx, msg_entering_long_mode
-  call mode32_println
-  cli
-
   ; Load long mode GDT
   lgdt [gdt64_descriptor]
-
-  ; Load CR3 with PML4 address
-  mov eax, (PML4_BASE << 12)
-  mov cr3, eax
 
   ; Enable PAE and PGE
   mov eax, cr4
@@ -120,16 +89,10 @@ enter_long_mode:
   or eax, EFER_LME_BIT
   wrmsr
 
-  call mode32_print_registers
-  hlt
-  cli
-
   ; Enable paging
   mov eax, cr0
   or eax, CR0_PG_BIT
   mov cr0, eax
-
-
 
   ; Jump to 64-bit code segment
   jmp SEG_CODE_0:long_mode_entry
@@ -142,16 +105,9 @@ enter_long_mode:
 %include "src/boot/mode32/pic.asm"
 %include "src/boot/mode32/idt.asm"
 ; ===== Messages (mode 32 - dd)
-msg_protected_mode_enabled: db 'Boot 1: Protected Mode Enabled', 0
-msg_cpuid_supported: db 'Boot 1: CPUID supported', 0
-msg_cpuid_unsupported: db 'Boot 1: CPUID not supported', 0
-msg_mode64_supported: db 'Boot 1: Long mode supported', 0
-msg_mode64_unsupported: db 'Boot 1: Long mode not supported', 0
-msg_paging_loaded: db 'Boot 1: Page tables loaded', 0
-msg_remap_pic_ok: db 'Boot 1: PIC remapped', 0
-msg_gdt_tss_loaded: db 'Boot 1: GDT and TSS loaded', 0
-msg_idt_loaded: db 'Boot 1: IDT loaded', 0
-msg_entering_long_mode: db 'Boot 1: Entering long mode', 0
+msg_protected_mode_enabled: db 'Protected Mode Enabled', 0
+msg_cpuid_unsupported: db 'CPUID not supported', 0
+msg_mode64_unsupported: db 'Long mode not supported', 0
 
 ; ===== Long Mode =====
 [bits 64]
@@ -172,90 +128,19 @@ long_mode_entry:
   ; Load IDT
   lidt [idt_descriptor]
 
-  mov byte [VGA_BUFFER], 'L'  ; Write 'L' to screen
-  mov byte [VGA_BUFFER + 1], 0x1F
-
-  call mode64_clear_screen
-  call print_welcome_message
-
-  ;sti
+  mov ebx, msg_long_mode_enabled
+  call println
 
   .halt:
     cli
     hlt
     jmp .halt
 
-[bits 64]
-mode64_clear_screen:
-  push rax
-  push cx
-  mov edi, VGA_BUFFER          ; Set VRAM address
-  mov rax, 0x0020002000200020  ; Set to black spaces
-  mov cx, 100                  ; Init counter
-  .clear_loop:
-    mov [edi], rax
-    add edi, 8
-    dec cx
-    jnz .clear_loop
-  pop cx
-  pop rax
-  ret
+; ===== Includes (mode 64)
+%include "src/boot/mode64/print64.asm"
+%include "src/boot/mode64/irs64.asm"
 
-[bits 64]
-print_welcome_message:
-  mov edi, VGA_BUFFER           ; Point to VRAM
-  mov rax, 0x1f631f6c1f651f57
-  mov [edi], rax
-  mov rax, 0x1f201f651f6d1f6f
-  mov [edi + 8], rax
-  mov rax, 0x1f6d1f201f6f1f74
-  mov [edi + 16], rax
-  mov rax, 0x1f2d1f661f201f79
-  mov [edi + 24], rax
-  mov rax, 0x1f6e1f691f6b1f63
-  mov [edi + 32], rax
-  mov rax, 0x1f651f6b1f201f67
-  mov [edi + 40], rax
-  mov rax, 0x1f6c1f651f6e1f72
-  mov [edi + 48], rax
-  mov rax, 0x1f001f001f001f21
-  mov [edi + 56], rax
-  ret
-
-; ===== IRSs
-[bits 64]
-isr_default:
-    push rax
-    mov rdi, VGA_BUFFER
-    mov rax, 0x1f631f6e1f6b1f55
-    mov [rdi], rax
-    mov rax, 0x1f771f6f1f6e1f6b
-    mov [rdi + 8], rax
-    mov rax, 0x1f6e1f201f6e1f77
-    mov [rdi + 16], rax
-    mov rax, 0x1f6e1f692f1f7421
-    mov [rdi + 24], rax
-    mov rax, 0x1f6e1f7421
-    mov [rdi + 32], rax
-    pop rax
-    iretq
-
-[bits 64]
-isr_gpf:
-    push rax
-    mov rdi, VGA_BUFFER
-    mov rax, 0x1f631f6e1f6b1f55
-    mov [rdi], rax
-    mov rax, 0x1f771f6f1f6e1f6b
-    mov [rdi + 8], rax
-    mov rax, 0x1f6e1f201f6e1f77
-    mov [rdi + 16], rax
-    mov rax, 0x1f6e1f692f1f7421
-    mov [rdi + 24], rax
-    mov rax, 0x1f6e1f7421
-    mov [rdi + 32], rax
-    hlt
-    pop rax
-    iretq
+; ===== Messages
+msg_long_mode_enabled: db 'Long mode enabled! (Yay)', 0
 
 times 4096 - ($ - $$) db 0

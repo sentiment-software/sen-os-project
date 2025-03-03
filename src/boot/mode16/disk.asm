@@ -1,3 +1,5 @@
+%include "src/boot/definitions/disk.asm"
+
 [bits 16]
 
 ;------------------------------

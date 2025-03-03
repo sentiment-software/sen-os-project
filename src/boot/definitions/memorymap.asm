@@ -28,29 +28,20 @@ BIOS_MB_END     equ 0x000FFFFF
 BOOT_1_BASE     equ 0x0700
 BOOT_1_SIZE     equ 0x1000
 BOOT_1_END      equ BOOT_1_BASE + BOOT_1_SIZE - 1 ; 0x16FF
-; Page tables
-PAGE_ALLOC_BASE equ 0x1700
-PAGE_ALLOC_END  equ 0x446FF
-PML4_BASE       equ 0x1700
-PDP_BASE        equ 0x2700
-PD_BASE         equ 0x3700
-PT_BASE         equ 0x4700
-PAGE_SIZE       equ 0x1000 ; 4096
-PT_COUNT        equ 64
+
+; Initial page tables identity mapping the first 2MB
+; We will use a "Page Directory Mapping a 2MB page"
+PAGE_ALLOC_BASE equ 0x20000
+PAGE_ALLOC_SIZE equ 0x4000
+PAGE_ALLOC_END  equ PAGE_ALLOC_BASE + PAGE_ALLOC_SIZE - 1
+PML4_BASE       equ PAGE_ALLOC_BASE
+PDP_BASE        equ PAGE_ALLOC_BASE + 0x1000
+PD_BASE         equ PAGE_ALLOC_BASE + 0x2000
+
 ; IDT
-IDT_BASE        equ 0x44800 ; this leaves 0x100 space after page tables
+IDT_BASE        equ 0x45000
 IDT_SIZE        equ 0x1000
-IDT_END         equ IDT_BASE + IDT_SIZE - 1 ; 0xB6FF
-; GDT + TSS
-GDT_BASE        equ 0xB700
-GDT_SIZE        equ 0x0080
-GDT_END         equ GDT_BASE + GDT_SIZE - 1 ; 0xB77F
-TSS_BASE        equ GDT_END + 1 ; 0xB780
-TSS_SIZE        equ 0x0080
-TSS_END         equ TSS_BASE + TSS_SIZE - 1 ; 0xB7FF
-; Kernel entry
-KERN_ENTRY_BASE equ 0xC000
-KERN_ENTRY_TOP  equ 0x7F000
+IDT_END         equ IDT_BASE + IDT_SIZE - 1 ; 0x45FFF
 
 ; ----- Stack Pointers -----
 ; Boot stack pointer: initial value of SP
@@ -60,5 +51,5 @@ BOOT_STACK_TOP  equ 0x06FF
 PM_STACK_BASE equ 0x45700
 PM_STACK_TOP  equ 0x476FF
 ; Kernel stack pointer: initial value of RSP
-KERN_STACK_BASE equ 0x45700
-KERN_STACK_TOP  equ 0x476FF
+KERN_STACK_BASE equ 0x46000
+KERN_STACK_TOP  equ 0x47FFF
