@@ -1,10 +1,5 @@
 [bits 16]
 
-; ===== Messages
-msg_a20_enabled dw 12
-db 'A20 enabled', 13, 10
-
-
 ;------------------------------
 ; enable_a20:
 ;
@@ -65,23 +60,22 @@ test_a20:
   mov ds, ax                  ; ds = 0xFFFF
   mov di, 0x500               ; 0x500 and 0x510 are guaranteed to be free
   mov si, 0x510
-
-  mov dl, byte [es:di]        ; Save original values on these addresses
-  push dx
-  mov dl, byte [ds:si]
-  push dx
+  mov al, byte [es:di]        ; Save original values on these addresses
+  push ax
+  mov al, byte [ds:si]
+  push ax
 
   mov byte [es:di], 0x00      ; [es:di] is 0x0000:0x1000
-  mov byte [ds:si], 0xff      ; [ds:si] is 0xFFFF:0x1010
-  cmp byte [es:di], 0xff      ; If the A20 line is disabled, [es:di] will contain 0xFF
+  mov byte [ds:si], 0xFF      ; [ds:si] is 0xFFFF:0x1010
+  cmp byte [es:di], 0xFF      ; If the A20 line is disabled, [es:di] will contain 0xFF
   mov ax, 0x0                 ; A20 disabled
-  je .a20_disabled
+  je .return
   mov ax, 0x1                 ; A20 enabled
 
-  .a20_disabled:
-    pop dx                    ; Restore registers (call context)
+  .return:
+    pop ax                    ; Restore registers (call context)
     mov byte [ds:si], dl
-    pop dx
+    pop ax
     mov byte [es:di], dl
     pop si
     pop di
@@ -125,23 +119,23 @@ enable_a20_bios:
 ;------------------------------
 enable_a20_keyboard:
   call .a20wait
-  mov al, 0xad           ; Disable keyboard.
+  mov al, 0xAD           ; Disable keyboard.
   out 0x64, al
   call .a20wait
-  mov al, 0xd0           ; Read from input.
+  mov al, 0xD0           ; Read from input.
   out 0x64, al
   call .a20wait2
   in al,0x60
   push eax
   call .a20wait
-  mov al, 0xd1           ; Write to output.
+  mov al, 0xD1           ; Write to output.
   out 0x64, al
   call .a20wait
   pop eax
   or al, 2
   out 0x60, al
   call .a20wait
-  mov al, 0xae           ; Enable keyboard.
+  mov al, 0xAE           ; Enable keyboard.
   out 0x64, al
   call .a20wait
   ret
@@ -162,11 +156,13 @@ enable_a20_keyboard:
 ; Enables A20 line using port 92
 ;------------------------------
 enable_a20_io92:
+  push ax
   in al, 0x92            ; Read from port 0x92
   test al, 2             ; Check if bit al[1] is set.
   jnz .return            ; If bit al[1] is already set, return.
   or al, 2               ; Set al[1].
-  and al, 0xfe           ; Set bit 0 is 0 (it causes a fast reset).
+  and al, 0xFE           ; Set bit 0 is 0 (it causes a fast reset).
   out 0x92, al           ; Write to port 0x92
  .return:
+   pop ax
    ret

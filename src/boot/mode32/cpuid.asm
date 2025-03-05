@@ -41,12 +41,17 @@ has_cpuid:
 ;   AX = 1 - Long mode is supported
 ;------------------------------
 has_cpuid_mode64:
+  push eax
+  push edx
   mov eax, 0x80000001       ; Call CPUID with EAX = 0x80000001
   cpuid
   test edx, CPUID_MODE64    ; If EDX[29] is not set,
   jz .returnFalse           ; then return false
   mov eax, 0x1              ; else return true
-  ret
+  jmp .return
   .returnFalse:
     mov eax, 0x0
+  .return:
+    pop edx
+    pop eax
     ret

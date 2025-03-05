@@ -1,15 +1,12 @@
 [bits 16]
 
 ;------------------------------
-; mode16_print:
+; print16:
 ;
-; Prints a null-terminated string to the screen using LODSB and BIOS INT=0x10/AH=0x0e.
+; Prints a null-terminated string to the screen using BIOS INT=0x10/AH=0x0E.
 ;
 ; Input:
 ;   SI - Points to the start of the string.
-;
-; Output:
-;   This method does not change the registers.
 ;------------------------------
 print16:
   push ax                     ; Save working registers
@@ -31,7 +28,7 @@ print16:
 ;------------------------------
 ; clear16:
 ;
-; Clears the screen in real mode.
+; Clears the screen using BIOS INT=0x10/AX=0x0700
 ;------------------------------
 clear16:
   pusha                       ; Push GP registers (call context)

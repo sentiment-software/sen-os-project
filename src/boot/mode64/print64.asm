@@ -55,8 +55,8 @@ console_seekTo:
   pop rax
   ret
 
-  ; Set cursor position to next line
-  ; Naive implementation, it just iterates .nextChar until we reach it
+; Set cursor position to next line
+; Naive implementation, it just iterates .nextChar until we reach it
 console_seekToNewLine:
   push rax
   .loop:

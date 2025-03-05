@@ -7,7 +7,7 @@ isr_default:
   iretq
 
 isr_gpf:
-    push rbx
-    hlt
-    pop rbx
-    iretq
+  push rbx
+  hlt
+  pop rbx
+  iretq

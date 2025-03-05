@@ -24,10 +24,6 @@ setup_idt:
     mov eax, isr_gpf
     call set_idt_entry
 
-    ; Load IDT descriptor
-;    mov word [idt_descriptor], 4095  ; Limit (4096 - 1)
-;    mov dword [idt_descriptor + 2], IDT_BASE
-;    mov dword [idt_descriptor + 6], 0  ; 64-bit address
     ret
 
 ; Set one IDT entry at edi with ISR address in eax

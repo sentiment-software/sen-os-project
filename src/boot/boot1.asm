@@ -50,10 +50,10 @@ protected_mode_entry:
   mov ss, ax
   mov esp, PM_STACK_TOP
 
-  call mode32_clear
+  call clear32
 
   mov ebx, msg_protected_mode_enabled
-  call mode32_println
+  call println32
 
   ; Test CPUID.ID
   call has_cpuid
@@ -72,12 +72,12 @@ protected_mode_entry:
 
   .cpuid_not_supported:
     mov ebx, msg_cpuid_unsupported
-    call mode32_println
+    call println32
     cli
     hlt
   .mode64_not_supported:
     mov ebx, msg_mode64_unsupported
-    call mode32_println
+    call println32
     cli
     hlt
 
