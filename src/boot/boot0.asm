@@ -1,34 +1,53 @@
 %include "src/boot/definitions/memorymap.asm"
 %include "src/boot/definitions/segments.asm"
 
-[org 0x7c00]                    ; Set origin address to the boot sector address
-
+[org 0x7C00]
 [bits 16]
-boot_start:
-  jmp SEG_ZERO:boot0_main       ; Reload CS to 0x0 to fix boot segment discrepancy
+
+boot_entry:
+  ; Reload CS to 0x0 to fix boot segment discrepancy
+  jmp SEG_ZERO:boot0_main
 
 boot0_main:
-  xor ax, ax                    ; Set all segment registers to 0x0
+  ; Reload segment registers and set Boot Stack Pointer (down-growing)
+  xor ax, ax
   mov ds, ax
   mov es, ax
   mov fs, ax
   mov gs, ax
   mov ss, ax
-  mov sp, BOOT_STACK_TOP        ; Set boot stack pointer (down-growing)
+  mov sp, BOOT_STACK_TOP
 
-  push dx                                        ; Pass disk number of bootable disk
+  ; Save the boot disk number
+  mov bx, dx
+
+  ; Load Boot Stage 1 & Global Structures at 0x1000
+  push bx                                        ; Pass disk number of bootable disk
   push word 0                                    ; Pass start sector (upper 16 bits)
-  push word 1                                    ; Pass start sector (lower 16 bits)
-  push word ((BOOT_1_END - BOOT_1_BASE) / 512)   ; Pass sector count
+  push word BOOT_1_SECTOR                        ; Pass start sector (lower 16 bits)
+  push word ((BOOT_1_SIZE + GLOB_SIZE) / 512)    ; Pass sector count
   push word BOOT_1_BASE                          ; Pass target buffer offset
   push word SEG_ZERO                             ; Pass target buffer segment
-  call mode16_read_disk                          ; Read upper boot stages from disk
-
+  call load16                                    ; Read upper boot stages from disk
   pop ax                                         ; Pop return code to AX
-  cmp ax, 0x1                                    ; If AX = 0x1 then disk read failed, halt
+  cmp ax, 0x0                                    ; If AX = 0x0 then disk read failed, halt
   je .halt
 
-  jmp SEG_ZERO:BOOT_1_BASE                       ; Jump to boot stage 1
+  ; Load Kernel at 0x10000
+; TODO: compile kernel into bin to call this
+;  push bx
+;  push word 0
+;  push word KERN_SECTOR
+;  push word (KERN_SIZE / 512)
+;  push word KERN_BASE
+;  push word SEG_ZERO
+;  call load16
+;  pop ax
+;  cmp ax, 0x0
+;  je .halt
+
+  ; Jump to Boot Stage 1
+  jmp SEG_ZERO:BOOT_1_BASE
 
   .halt:
     cli
@@ -36,8 +55,10 @@ boot0_main:
     jmp .halt
 
 ; ===== Includes
-%include "src/boot/mode16/disk.asm"
+%include "src/boot/mode16/disk16.asm"
 
-; ===== Padding
-times 510 - ($ - $$) db 0   ; Pad to 510 bytes
-dw 0xaa55                   ; Boot signature at 511:512 bytes
+; ===== Align on a 512 byte boundary
+times 510 - ($ - $$) db 0
+
+; ===== Boot Sector Signature
+dw 0xAA55

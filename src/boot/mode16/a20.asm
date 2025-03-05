@@ -3,61 +3,43 @@
 ; ===== Messages
 msg_a20_enabled dw 12
 db 'A20 enabled', 13, 10
-msg_a20_disabled dw 13
-db 'A20 disabled', 13, 10
-msg_a20_enable_with_bios dw 21
-db 'A20 enable with bios', 13, 10
-msg_a20_enable_with_keyboard dw 36
-db 'A20 enable with keyboard controller', 13, 10
-msg_a20_enable_with_io92 dw 21
-db 'A20 enable with IO92', 13, 10
+
 
 ;------------------------------
 ; enable_a20:
 ;
 ; Tries to enable the A20 line using BIOS, Keyboard Controller and Port 92.
 ;
-; Result:
-;   Halts the CPU if A20 could not be enabled, otherwise it returns without side effect.
+; Returns:
+;   AX = 0 - A20 disabled
+;   AX = 1 - A20 enabled
 ;------------------------------
 enable_a20:
-  push eax
   call test_a20
   test ax, ax
   jnz .returnOk
 
-  mov si, msg_a20_enable_with_bios
-  call mode16_print
   call enable_a20_bios
   call test_a20
   test ax, ax
   jnz .returnOk
 
-  mov si, msg_a20_enable_with_keyboard
-  call mode16_print
   call enable_a20_keyboard
   call test_a20
   test ax, ax
   jnz .returnOk
 
-  mov si, msg_a20_enable_with_io92
-  call mode16_print
   call enable_a20_io92
   call test_a20
   test ax, ax
   jnz .returnOk
 
-  mov si, msg_a20_disabled               ; We couldn't enable the A20 line
-  call mode16_print                      ; Print error message
-  .halt:                                 ; Halt the CPU
-    cli
-    hlt
-    jmp .halt
+  ; Return 0
+  xor ax, ax
+  ret
 
   .returnOk:
-    mov si, msg_a20_enabled
-    call mode16_print
-    pop eax
+    mov ax, 1
     ret
 
 ;------------------------------
@@ -81,8 +63,8 @@ test_a20:
   mov es, ax                  ; es = 0
   not ax                      ; ax = 0xFFFF
   mov ds, ax                  ; ds = 0xFFFF
-  mov di, 0x1000              ; 0x1000 and 0x1010 are guaranteed free (TODO: they are not, but we don't see an error because the BIOS already enabled it)
-  mov si, 0x1010
+  mov di, 0x500               ; 0x500 and 0x510 are guaranteed to be free
+  mov si, 0x510
 
   mov dl, byte [es:di]        ; Save original values on these addresses
   push dx

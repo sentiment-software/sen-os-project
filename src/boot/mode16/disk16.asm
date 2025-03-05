@@ -3,31 +3,31 @@
 [bits 16]
 
 ;------------------------------
-; mode16_read_disk:
+; load16:
 ;
-; Reads sectors from a disk using using BIOS INT 0x13/AH=0x42.
+; Loads sectors from a disk into memory using BIOS INT 0x13/AH=0x42.
 ; It builds Disk Address Packets (DAPs) based on the specified input.
 ; If sector count is greater than 127, this method will process the sectors in multiple loops.
 ; This is due to compatibility reasons.
 ;
 ; Input:
-;   Push the following stack of values before call (top is last):
-;     - [word] Buffer segment (<- Pushed last / Stack top)
-;     - [word] Buffer offset
-;     - [word] Number of sectors to read into buffer
-;     - [word] Start sector (lower 16 bits)
-;     - [word] Start sector (upper 16 bits)
+;   Push the following values to the stack before call in this order:
 ;     - [word] Disk number on the low byte (Pushed first)
+;     - [word] Start sector (upper 16 bits)
+;     - [word] Start sector (lower 16 bits)
+;     - [word] Number of sectors to read into buffer
+;     - [word] Buffer offset
+;     - [word] Buffer segment (<- Pushed last / Stack top)
 ;
 ; Working registers:
-;   AX, BX, CX, DX, SI - saved and restored from stack.
+;   This routine does not change the registers.
 ;
 ; Output:
 ;   Result code is pushed to stack:
-;     0x0  = Success
-;     0x1  = Disk error
+;     0x1  = Success
+;     0x0  = Disk error
 ;------------------------------
-mode16_read_disk:
+load16:
   pop word [ret_ptr]                        ; Pop the return pointer and save it
   pop word [dap.bufferSegment]              ; Pop the DAP values
   pop word [dap.bufferOffset]
@@ -72,11 +72,11 @@ mode16_read_disk:
     jmp .read_loop                          ; Else loop
   .disk_ok:
     popa                                    ; Restore GP registers (call context)
-    push 0x0                                ; Push the OK return code - must be after popa
+    push 0x1                                ; Push the OK return code - must be after popa
     jmp .return                             ; Jump to return
   .disk_error:
     popa                                    ; Restore GP registers (call context)
-    push 0x1                                ; Push the error return code - must be after popa
+    push 0x0                                ; Push the error return code - must be after popa
   .return:
     push word [ret_ptr]                     ; Push the return pointer value
     mov word [ret_ptr], 0                   ; Clear the variable

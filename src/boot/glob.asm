@@ -1,13 +1,16 @@
-; ===== 64-bit mode Task State Segment =====
-; In long mode a 64-bit task state segment must exist.
-; The TSS holds information important to 64-bit mode not related to the task-switch mechanism.
-; This information includes:
-;   - RSPn: The full 64-bit canonical forms of the stack pointers (RSP) for privilege levels 0-2.
-;   - ISTn: The full 64-bit canonical forms of the Interrupt Stack Table (IST) pointers.
-;   - I/O Map Base - The 16-bit offset to the I/O permission bit map from the 64-bit TSS base.
-; The OS must create at least one 64-bit TSS after activating IA-32e mode and load it into the
-; TR register by executing the LTR instruction.
-tss64_start:
+%include "src/boot/definitions/memorymap.asm"
+
+[org GLOB_BASE]
+
+; ===== 32-bit Global Descriptor Table =====
+gdt32:
+  dq 0x0000000000000000          ; Null descriptor
+  dq 0x00CF9A000000FFFF          ; 32-bit Code (0x8)
+  dq 0x00CF92000000FFFF          ; 32-bit Data (0x10)
+  times 0x80 - ($ - gdt32) db 0
+
+; ===== 64-bit Task State Segment =====
+tss64:
   dd 0                    ; Reserved
   dq KERN_STACK_TOP       ; RSP0 (kernel stack)
   dq 0                    ; RSP1
@@ -24,10 +27,10 @@ tss64_start:
   dd 0                    ; Reserved
   dw 0                    ; Reserved
   dw 0                    ; I/O Map Base (none)
-tss64_end:
+  times 0x80 - ($ - tss64) db 0
 
-; ===== 64-bit Global Descriptor Table =====
-gdt64_start:
+; ===== 64-bit Global Descriptor Table ===== 88, 0x58
+gdt64:
   dq 0x0000000000000000   ; Null descriptor
   dq 0x00AF9B000000FFFF   ; Ring 0 Code (0x08)
   dq 0x00AF93000000FFFF   ; Ring 0 Data (0x10)
@@ -39,19 +42,33 @@ gdt64_start:
   dq 0x00AFF3000000FFFF   ; Ring 3 Data (0x40)
 
   ; TSS Descriptor (0x48)
-  dw tss64_end - tss64_start - 1    ; Limit[15:0]
-  dw tss64_start                    ; Base[15:0]
+  dw TSS64_SIZE - 1                 ; Limit[15:0]
+  dw TSS64_BASE                     ; Base[15:0]
   db 0x00                           ; Base[23:16]
   db 0x89                           ; Present, DPL-0, TSS, Execute-Only, Accessed
   db 0x00                           ; Limit[19:16] = 0, flags
   db 0x00                           ; Base[31:24]
   dd 0x00000000                     ; Base[63:32]
   dd 0x00000000                     ; Reserved
+  times 0x200 - ($ - gdt64) db 0
 
-  align 8
-    db 0
-gdt64_end:
+; ===== 32-bit GDTD =====
+gdt32_descriptor:
+  dw GDT32_SIZE - 1  ; Limit
+  dd GDT32_BASE      ; Base
+  times 0x10 - ($ - gdt32_descriptor) db 0
 
+; ===== 64-bit GDTD =====
 gdt64_descriptor:
-  dw gdt64_end - gdt64_start - 1
-  dd gdt64_start
+  dw GDT64_SIZE - 1  ; Limit
+  dd GDT64_BASE      ; Base
+  times 0x10 - ($ - gdt64_descriptor) db 0
+
+; ===== 64-bit IDTD =====
+idt64_descriptor:
+  dw IDT_SIZE - 1                 ; Limit
+  dq IDT_BASE                     ; Base
+  times 0x10 - ($ - idt64_descriptor) db 0
+
+; ===== Align on a 4kB (0x1000) boundary
+times 4096 - ($ - $$) db 0

@@ -1,3 +1,5 @@
+%include "src/boot/definitions/vga.asm"
+
 [bits 64]
 
 ; Initialize the console
