@@ -7,6 +7,7 @@
 ; ===== Real Mode =====
 [bits 16]
 boot1_main:
+  call hide_cursor16
   cli
 
   ; Enable A20
@@ -26,6 +27,7 @@ boot1_main:
   jmp SEG_CODE_32:protected_mode_entry
 
   .a20_disabled:
+    sti
     mov si, msg_a20_disabled
     call print16
     cli
@@ -35,8 +37,7 @@ boot1_main:
 %include "src/boot/mode16/a20.asm"
 %include "src/boot/mode16/print16.asm"
 ; ===== Messages (mode 16)
-msg_a20_disabled dw 13
-db 'A20 disabled', 13, 10
+msg_a20_disabled: db 'A20 disabled', 0
 
 ; ===== Protected Mode =====
 [bits 32]
@@ -57,13 +58,13 @@ protected_mode_entry:
 
   ; Test CPUID.ID
   call has_cpuid
-  cmp eax, 0x0
-  je .cpuid_not_supported
+  test eax, eax
+  jz .cpuid_not_supported
 
   ; Test CPUID.MODE64
   call has_cpuid_mode64
-  cmp eax, 0x0
-  je .mode64_not_supported
+  test eax, eax
+  jz .mode64_not_supported
 
   call init_pages
   call remap_pic

@@ -9,34 +9,41 @@ console32:
   .col:    dd 0
   .offset: dd VGA_PAGE_1_BASE
 
-; Increments cursor position
-console32_nextChar:
-  pusha
-  mov eax, dword [console32.col]
-  inc eax
-  cmp eax, (VGA_LINE_LENGTH - 1)      ; If we are still in line
-  jle .incOffset                      ;    then just increase the buffer offset
-
-  mov ebx, dword [console32.line]     ; Else, move to new line
-  inc ebx
-  mov eax, 0
-  .incOffset:
-    add dword [console32.offset], 2
-    mov dword [console32.col], eax
-    mov dword [console32.line], ebx
-    popa
+  ; Updates the offset based on the current cursor values
+  ; Calculates: offset := (2 * line * VGA_LINE_LENGTH) + (2 * col) + VGA_BUFFER
+  .updateOffset:
+    push eax
+    push ebx
+    push edx
+    mov eax, dword [.line]
+    mov ebx, (2 * VGA_LINE_LENGTH)
+    mul ebx
+    mov ebx, dword [.col]
+    add eax, ebx
+    add eax, ebx
+    add eax, VGA_BUFFER
+    mov dword [.offset], eax
+    pop edx
+    pop ebx
+    pop eax
     ret
 
-; Set cursor position to next line
-; Naive implementation, it just iterates .nextChar until we reach it
-console32_seekToNewLine:
-  push eax
-  .loop:
-    call console32_nextChar
-    mov eax, dword [console32.col]
-    cmp eax, 0
-    jne .loop
-    pop eax
+  ; Moves the cursor to a new line
+  .newline:
+    add dword [.line], 1
+    mov dword [.col], 0
+    call .updateOffset
+    ret
+
+  ; Moves the cursor to the next character
+  .next:
+    add dword [.col], 1
+    cmp dword [.col], VGA_LINE_LENGTH
+    jge .nextNewLine
+    call .updateOffset
+    ret
+  .nextNewLine:
+    call .newline
     ret
 
 
@@ -44,34 +51,39 @@ console32_seekToNewLine:
 ; Inputs:
 ;   EBX: Pointer to the string's first character
 print32:
-  pusha
+  push eax
+  push ebx
+  push edx
   .loop:
     xor eax, eax
+    mov edx, dword [console32.offset]
     mov ah, VGA_BLACK_ON_GRAY
     mov al, [ebx]
-    mov edx, dword [console32.offset]
 
-    cmp al, 0       ; If = 0, end of string, return
+    cmp al, 0            ; If = 0, end of string, return
     je .return
-    cmp al, 10      ; If = 10, new line
+    cmp al, 10           ; If = 10, new line
     je .newline
 
-    mov [edx], ax                       ; Put character in VGA buffer
-    inc ebx                             ; Next character position in string
-    call console32_nextChar             ; Next cursor position on console
+    mov [edx], ax        ; Put character in VGA buffer
+    inc ebx              ; Next character position in string
+    call console32.next  ; Next cursor position on console
     jmp .loop
 
   .newline:
-    call console32_seekToNewLine
+    call console32.newline
     jmp .loop
 
   .return:
-    popa
+    pop edx
+    pop ebx
+    pop eax
     ret
 
+; Prints a null-terminated string and a new line
 println32:
   call print32
-  call console32_seekToNewLine
+  call console32.newline
   ret
 
 ; Clears the screen by clearing the first page in the VGA memory
@@ -81,9 +93,9 @@ clear32:
 
   mov dword [console32.line], 0
   mov dword [console32.col], 0
-  mov dword [console32.offset], VGA_PAGE_1_BASE
+  call console32.updateOffset
   mov edx, VGA_BUFFER
-  mov al, 0x20 ; The [SPACE] character
+  mov al, ' '
   mov ah, VGA_BLACK_ON_GRAY
 
   .loop:

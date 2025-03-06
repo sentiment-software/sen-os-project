@@ -1,13 +1,8 @@
 [bits 16]
 
-;------------------------------
-; print16:
-;
 ; Prints a null-terminated string to the screen using BIOS INT=0x10/AH=0x0E.
-;
 ; Input:
 ;   SI - Points to the start of the string.
-;------------------------------
 print16:
   push ax                     ; Save working registers
   push si
@@ -25,11 +20,7 @@ print16:
     pop ax
     ret
 
-;------------------------------
-; clear16:
-;
 ; Clears the screen using BIOS INT=0x10/AX=0x0700
-;------------------------------
 clear16:
   pusha                       ; Push GP registers (call context)
   mov ax, 0x0700              ; Set interrupt function 7 and parameter 0 (scroll window)
@@ -39,3 +30,14 @@ clear16:
   int 0x10                    ; Call interrupt
   popa                        ; Pop GP registers (call context)
   ret                         ; Return
+
+; Hides the cursor using BIOS INT=0x10/AX=0x2607
+hide_cursor16:
+  push ax
+  push cx
+  mov ax, 0x0100
+  mov cx, 0x2607
+  int 0x10
+  pop cx
+  pop ax
+  ret
