@@ -1,15 +1,14 @@
 # Memory Map
 
-| Start   | End     | Section             | Size  |
-|---------|---------|---------------------|-------|
-| 0x0000  | 0x03FF  | IVT                 | 1 kB  |
-| 0x0400  | 0x04FF  | BDA                 | 256 b |
-| 0x0500  | 0x06FF  | Boot Stack (SP)     | 512 b |
-| 0x0700  | 0x16FF  | Boot Stage 1        | 4 kB  |
-| 0x1700  | 0x19FFF | (Free)              | -     |
-| 0x20000 | 0x23FFF | Initial page tables | 16kB  |
-| 0x24000 | 0x450FF | (Free)              | -     |
-| 0x45000 | 0x45FFF | IDT                 | 4 kB  |
-| 0x46000 | 0x47FFF | Kernel Stack (RSP)  | 8 kB  |
-| 0x48000 | 0x7FFFF | (Free)              | -     |
-| 0xB8000 | 0xBFFFF | VGA Text Buffer     | 32kB  |   
+| Start   | End     | Section                                                        | Size   |
+|---------|---------|----------------------------------------------------------------|--------|
+| 0x0000  | 0x03FF  | IVT                                                            | 1 kB   |
+| 0x0400  | 0x04FF  | BDA                                                            | 256 b  |
+| 0x0500  | 0x0FFF  | Boot Stack (SP)                                                | 2 kB   |
+| 0x1000  | 0x1FFF  | Boot Stage 1                                                   | 4 kB   |
+| 0x2000  | 0x2FFF  | Global Structures (64-bit):<br>TSS, GDT, GDTD, IDTP, Boot Info | 4 kB   |
+| 0x3000  | 0x3FFF  | IDT (64-bit)                                                   | 4 kB   |
+| 0x4000  | 0x9FFF  | Paging Structure Allocation                                    | 24 kB  |
+| 0xA000  | 0x7DFFF | Kernel                                                         | 504 kB |
+| 0x7E000 | 0x7FFFF | Kernel Stack (RSP)                                             | 8 kB   |
+| 0x80000 | 0xFFFFF | **Reserved**                                                   | 128 kB |

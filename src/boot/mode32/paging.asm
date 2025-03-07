@@ -1,3 +1,4 @@
+%include "src/boot/definitions/memorymap.asm"
 %include "src/boot/definitions/paging.asm"
 
 [bits 32]
@@ -25,11 +26,11 @@ init_pages:
 
   ; Setup PD mapping a 2MB page at 0x0-0x1FFFFF
   mov edi, PD_BASE
-  mov eax, 0x0| PAGE_PRESENT | PAGE_WRITE | PD_2MB
+  mov eax, 0x0 | PAGE_PRESENT | PAGE_WRITE | PD_2MB
   mov [edi], eax
 
   ; Load CR3 with PML4 address
-  mov eax, PML4_BASE ;(PML4_BASE << 12)
+  mov eax, PML4_BASE
   mov cr3, eax
 
   popa
