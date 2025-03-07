@@ -23,9 +23,44 @@
 ;   This routine does not change the registers.
 ;
 ; Output:
-;   Result code is pushed to stack:
-;     0x1  = Success
-;     0x0  = Disk error
+;   Result code is in AL:
+;      00h    Success
+;      01h    Invalid function in AH or invalid parameter
+;      02h    Address mark not found
+;      03h    Disk write-protected
+;      04h    Sector not found/read error
+;      05h    Reset failed (hard disk)
+;      05h    Data did not verify correctly (TI Professional PC)
+;      06h    Disk changed (floppy)
+;      07h    Drive parameter activity failed (hard disk)
+;      08h    DMA overrun
+;      09h    Data boundary error (attempted DMA across 64K boundary or >80h sectors)
+;      0Ah    Bad sector detected (hard disk)
+;      0Bh    Bad track detected (hard disk)
+;      0Ch    Unsupported track or invalid media
+;      0Dh    Invalid number of sectors on format (PS/2 hard disk)
+;      0Eh    Control data address mark detected (hard disk)
+;      0Fh    DMA arbitration level out of range (hard disk)
+;      10h    Uncorrectable CRC or ECC error on read
+;      11h    Data ECC corrected (hard disk)
+;      20h    Controller failure
+;      31h    No media in drive (IBM/MS INT 13 extensions)
+;      32h    Incorrect drive type stored in CMOS (Compaq)
+;      40h    Seek failed
+;      80h    Timeout (not ready)
+;      AAh    Drive not ready (hard disk)
+;      B0h    Volume not locked in drive (INT 13 extensions)
+;      B1h    Volume locked in drive (INT 13 extensions)
+;      B2h    Volume not removable (INT 13 extensions)
+;      B3h    Volume in use (INT 13 extensions)
+;      B4h    Lock count exceeded (INT 13 extensions)
+;      B5h    Valid eject request failed (INT 13 extensions)
+;      B6h    Volume present but read protected (INT 13 extensions)
+;      BBh    Undefined error (hard disk)
+;      CCh    Write fault (hard disk)
+;      E0h    Status register error (hard disk)
+;      FFh    Sense operation failed (hard disk)
+; TODO: Some BIOSes return the result code in AH, some in AL, some in both.
 ;------------------------------
 load16:
   pop word [ret_ptr]                        ; Pop the return pointer and save it
@@ -35,7 +70,10 @@ load16:
   pop word [dap.lowerLBA]
   pop word [dap.lowerLBA + 2]
   pop word [disk_number]                    ; Pop the disk number
-  pusha                                     ; Save GP registers (call-context)
+  push bx                                   ; Save GP registers (call-context)
+  push cx
+  push dx
+  push si
 
   .readCycleCount:                          ; Calculate the # of read cycles:
     mov ax, [dap.sectorCount]               ;   ceil(sectorCount / SECTOR_LIMIT)
@@ -46,7 +84,7 @@ load16:
     cmp ax, 1                               ; If AX >= 1,
     jae .read_sector_limit                  ;   then we read with the sector limit,
     cmp dx, 0                               ;   else if DX = 0
-    je .disk_ok                             ;     then reading is done and OK,
+    je .return                              ;     then reading is done and OK,
     mov word [dap.sectorCount], dx          ; otherwise read the remaining sectors.
     xor dx, dx                              ; Clear the remainder to compare later
     jmp .read_disk
@@ -60,7 +98,7 @@ load16:
     mov ah, 0x42                            ; Load interrupt function number into AH
     int 0x13                                ; Call interrupt
     popa                                    ; Restore GP registers (read-loop context)
-    jc .disk_error                          ; If CF is set, there was an error
+    jc .return                              ; If CF is set, there was an error, error code is in AX
   .loopAx:
     cmp ax, 0                               ; If AX = 0,
     je .loopDx                              ;   then compare DX
@@ -68,19 +106,17 @@ load16:
     jmp .read_loop                          ; Loop
   .loopDx:
     cmp dx, 0                               ; If DX = 0,
-    je .disk_ok                             ;   then reading is done and OK
+    je .return                              ;   then reading is done and OK
     jmp .read_loop                          ; Else loop
-  .disk_ok:
-    popa                                    ; Restore GP registers (call context)
-    push 0x1                                ; Push the OK return code - must be after popa
-    jmp .return                             ; Jump to return
-  .disk_error:
-    popa                                    ; Restore GP registers (call context)
-    push 0x0                                ; Push the error return code - must be after popa
   .return:
+    and ax, 0x00FF                          ; Result code in AL, sanitize AH
+    pop si                                  ; Restore GP registers (call context)
+    pop dx
+    pop cx
+    pop bx
     push word [ret_ptr]                     ; Push the return pointer value
     mov word [ret_ptr], 0                   ; Clear the variable
-    ret                                     ; Return
+    ret                                     ; Return with result code in AH
 
 ;------------------------------
 ; Disk Address Packet

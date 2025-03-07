@@ -10,7 +10,7 @@ print16:
   mov ah, 0x0E                ; Load interrupt function number into AH
   .loop:
     lodsb                     ; Load string byte into AL, increment SI
-    cmp al, 0                 ; If AL = 0, return
+    test al, al               ; If AL = 0, return
     jz .return
     int 0x10                  ; Call interrupt
     jmp .loop                 ; Loop
@@ -41,3 +41,34 @@ hide_cursor16:
   pop cx
   pop ax
   ret
+
+; Prints the value of AX as hex.
+printhex16:
+  push ax                     ; Save working registers
+  push bx
+  push cx
+
+  mov bx, ax                  ; Copy AX to BX
+  mov cx, 4                   ; Set loop counter to 4 for 4 hex digits
+
+  .loop:
+    rol bx, 4                 ; Rotate left 4 bits to get next hex digit in AL
+    mov al, bl                ; Move lower 4 bits of BX to AL
+    and al, 0x0F              ; Mask upper 4 bits of AL
+    cmp al, 9                 ; Check if digit is 0-9 or A-F
+    jbe .digit_is_number
+    add al, 'A' - 10          ; Convert to ASCII letter
+    jmp .print_digit
+
+  .digit_is_number:
+    add al, '0'               ; Convert to ASCII number
+
+  .print_digit:
+    mov ah, 0x0E
+    int 0x10
+    loop .loop                ; Loop until all digits are printed
+
+    pop cx                    ; Restore working registers
+    pop bx
+    pop ax
+    ret

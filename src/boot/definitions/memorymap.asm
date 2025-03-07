@@ -69,10 +69,10 @@ PML4_BASE       equ PAGE_ALLOC_BASE
 PDP_BASE        equ PAGE_ALLOC_BASE + 0x1000
 PD_BASE         equ PAGE_ALLOC_BASE + 0x2000
 ; ----- Kernel -----
-KERN_BASE       equ 0x10000
-KERN_SIZE       equ 0x6E000
-KERN_END        equ KERN_BASE + KERN_SIZE - 1
-KERN_SECTOR     equ BOOT_1_SECTOR + ((BOOT_1_SIZE + GLOB_SIZE) / 512) + 1
+KERN_BASE       equ 0xA000
+KERN_SIZE       equ 0x74000
+KERN_END        equ KERN_BASE + KERN_SIZE - 1  ; 0x7DFFF
+KERN_SECTOR     equ BOOT_1_SECTOR + ((BOOT_1_SIZE + GLOB_SIZE) / 512)
 
 ; ===== Stack Pointers =====
 ; ----- Boot Stack Pointer (SP) -----

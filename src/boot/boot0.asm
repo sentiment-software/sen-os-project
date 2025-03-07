@@ -29,22 +29,19 @@ boot0_main:
   push word BOOT_1_BASE                          ; Pass target buffer offset
   push word SEG_ZERO                             ; Pass target buffer segment
   call load16                                    ; Read upper boot stages from disk
-  pop ax                                         ; Pop return code to AX
-  cmp ax, 0x0                                    ; If AX = 0x0 then disk read failed, halt
-  je .halt
+  test al, al                                    ; If AX <> 0x0 then disk read failed
+  jnz .errorBoot
 
-  ; Load Kernel at 0x10000
-; TODO: compile kernel into bin to call this
-;  push bx
-;  push word 0
-;  push word KERN_SECTOR
-;  push word (KERN_SIZE / 512)
-;  push word KERN_BASE
-;  push word SEG_ZERO
-;  call load16
-;  pop ax
-;  cmp ax, 0x0
-;  je .halt
+  ; Load Kernel at 0xA000
+  push bx
+  push word 0
+  push word KERN_SECTOR
+  push word 1 ;(KERN_SIZE / 512)
+  push word KERN_BASE
+  push word SEG_ZERO
+  call load16
+  test al, al
+  jnz .errorKernel
 
   ; Jump to Boot Stage 1
   jmp SEG_ZERO:BOOT_1_BASE
@@ -54,8 +51,22 @@ boot0_main:
     hlt
     jmp .halt
 
+  .errorBoot:
+    mov si, msg_error_boot
+    jmp .printError
+  .errorKernel:
+    mov si, msg_error_kern
+  .printError:
+    call print16
+    call printhex16
+    jmp .halt
+
+
 ; ===== Includes
 %include "src/boot/mode16/disk16.asm"
+%include "src/boot/mode16/print16.asm"
+msg_error_kern: db 'Error loading kernel: ', 0
+msg_error_boot: db 'Error loading boot: ', 0
 
 ; ===== Align on a 512 byte boundary
 times 510 - ($ - $$) db 0
