@@ -16,7 +16,7 @@ boot1_main:
   jz .a20_disabled
 
   ; Load minimal 32-bit GDT
-  lgdt [GDT32_DESC_BASE]
+  lgdt [gdt32_descriptor]
 
   ; Enable Protected Mode
   mov eax, cr0
@@ -84,7 +84,7 @@ protected_mode_entry:
 
 enable_long_mode:
   ; Load 64-bit GDT
-  lgdt [GDT64_DESC_BASE]
+  lgdt [gdt64_descriptor]
 
   ; Enable PAE and PGE
   mov eax, cr4
@@ -134,13 +134,13 @@ long_mode_entry:
   ltr ax
 
   ; Load IDT
-  lidt [IDT64_DESC_BASE]
+  lidt [idt64_descriptor]
 
   mov ebx, msg_long_mode_enabled
   call println
 
   ; Push boot info for kernel
-  mov rdi, BOOT_INFO_BASE
+  mov rdi, boot_info
 
   ; Jump to kernel
   jmp KERN_BASE
@@ -156,5 +156,10 @@ long_mode_entry:
 ; ===== Messages (mode 64)
 msg_long_mode_enabled: db 'Long mode enabled! (Yay)', 0
 
-; ===== Align on a 4kB (0x1000) boundary
+; ===== Align Boot Stage 1 on the next 4kB boundary, 0x2000
 times 4096 - ($ - $$) db 0
+
+; ===== Align Global Structures on the next 4kB boundary, 0x3000
+glob:
+%include "src/boot/glob.asm"
+times 4096 - ($ - glob) db 0

@@ -1,7 +1,5 @@
 %include "src/boot/definitions/memorymap.asm"
 
-[org GLOB_BASE]
-
 ; ===== 32-bit Global Descriptor Table =====
 gdt32:
   dq 0x0000000000000000          ; Null descriptor
@@ -73,6 +71,3 @@ idt64_descriptor:
 ; ===== Boot info passed to kernel
 boot_info:
   .magic: dq 0xDEADBEEF
-
-; ===== Align on a 4kB (0x1000) boundary
-times 4096 - ($ - $$) db 0
