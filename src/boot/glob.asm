@@ -56,19 +56,23 @@ gdt64:
 gdt32_descriptor:
   dw GDT32_SIZE - 1  ; Limit
   dd GDT32_BASE      ; Base
-  times 0x10 - ($ - gdt32_descriptor) db 0
+  times 0x8 - ($ - gdt32_descriptor) db 0
 
 ; ===== 64-bit GDTD =====
 gdt64_descriptor:
   dw GDT64_SIZE - 1  ; Limit
   dd GDT64_BASE      ; Base
-  times 0x10 - ($ - gdt64_descriptor) db 0
+  times 0x8 - ($ - gdt64_descriptor) db 0
 
 ; ===== 64-bit IDTD =====
 idt64_descriptor:
   dw IDT_SIZE - 1                 ; Limit
   dq IDT_BASE                     ; Base
   times 0x10 - ($ - idt64_descriptor) db 0
+
+; ===== Boot info passed to kernel
+boot_info:
+  .magic: dq 0xDEADBEEF
 
 ; ===== Align on a 4kB (0x1000) boundary
 times 4096 - ($ - $$) db 0

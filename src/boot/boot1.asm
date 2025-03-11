@@ -139,6 +139,10 @@ long_mode_entry:
   mov ebx, msg_long_mode_enabled
   call println
 
+  ; Push boot info for kernel
+  mov rdi, BOOT_INFO_BASE
+
+  ; Jump to kernel
   jmp KERN_BASE
 
   .halt:
@@ -151,10 +155,6 @@ long_mode_entry:
 %include "src/boot/mode64/isr64.asm"
 ; ===== Messages (mode 64)
 msg_long_mode_enabled: db 'Long mode enabled! (Yay)', 0
-
-; ===== Boot info passed to kernel
-boot_info:
-    dq 0xDEADBEEF
 
 ; ===== Align on a 4kB (0x1000) boundary
 times 4096 - ($ - $$) db 0
