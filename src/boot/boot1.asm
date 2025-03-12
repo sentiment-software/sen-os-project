@@ -57,12 +57,12 @@ protected_mode_entry:
   call println32
 
   ; Test CPUID.ID
-  call has_cpuid
+  call cpuid_supported
   test eax, eax
   jz .cpuid_not_supported
 
   ; Test CPUID.MODE64
-  call has_cpuid_mode64
+  call cpuid_has_mode64
   test eax, eax
   jz .mode64_not_supported
 
@@ -107,12 +107,12 @@ enable_long_mode:
 
 ; ===== Includes (mode 32)
 %include "src/boot/mode32/print32.asm"
-%include "src/boot/mode32/cpuid.asm"
+%include "src/boot/mode32/cpuid32.asm"
 %include "src/boot/mode32/paging.asm"
 %include "src/boot/mode32/pic.asm"
 %include "src/boot/mode32/idt.asm"
 ; ===== Messages (mode 32)
-msg_protected_mode_enabled: db 'Protected Mode Enabled', 0
+msg_protected_mode_enabled: db 'Protected Mode Enabled!', 0
 msg_cpuid_unsupported: db 'CPUID not supported', 0
 msg_mode64_unsupported: db 'Long mode not supported', 0
 
@@ -139,6 +139,9 @@ long_mode_entry:
   mov ebx, msg_long_mode_enabled
   call println
 
+  ; Load boot info
+  call cpuid_read_all
+
   ; Push boot info for kernel
   mov rdi, boot_info
 
@@ -153,8 +156,9 @@ long_mode_entry:
 ; ===== Includes (mode 64)
 %include "src/boot/mode64/print64.asm"
 %include "src/boot/mode64/isr64.asm"
+%include "src/boot/mode64/cpuid64.asm"
 ; ===== Messages (mode 64)
-msg_long_mode_enabled: db 'Long mode enabled! (Yay)', 0
+msg_long_mode_enabled: db 'Long mode enabled!', 0
 
 ; ===== Align Boot Stage 1 on the next 4kB boundary, 0x2000
 times 4096 - ($ - $$) db 0

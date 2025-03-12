@@ -37,7 +37,10 @@ typedef struct {
   unsigned char page;
 } Console;
 
+void printChar(char c);
 void print(const char* str);
 void println(const char* str);
+void printAscii(unsigned int var);
+void printHex(unsigned long var);
 void updateOffset();
 void newline();

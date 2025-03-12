@@ -5,6 +5,13 @@
 
 typedef struct {
   unsigned long magic;
+  unsigned int cpuBasicMax;
+  unsigned int cpuExtMax;
+  unsigned int cpuVendorId1;
+  unsigned int cpuVendorId2;
+  unsigned int cpuVendorId3;
+  unsigned int cpuExtSignature;
+  unsigned int cpuExtFeatures;
 } BootInfo;
 
 /**
@@ -13,9 +20,14 @@ typedef struct {
 __attribute__((section(".text.kmain")))
 void kmain(BootInfo* bootInfo) {
   println("C Kernel Loaded!");
-  if (bootInfo->magic == 0xDEADBEEF) {
-    println("Boot magic arrived: 0xDEADBEEF");
-  }
-  print("Print very long line: 01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789");
+  println("-- Boot Info --");
+  print("Magic: ");
+  printHex(bootInfo->magic);
+  newline();
+  print("CPU: ");
+  printAscii(bootInfo->cpuVendorId1);
+  printAscii(bootInfo->cpuVendorId2);
+  printAscii(bootInfo->cpuVendorId3);
+  newline();
   for (;;);
 }

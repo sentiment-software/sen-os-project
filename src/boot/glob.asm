@@ -68,6 +68,4 @@ idt64_descriptor:
   dq IDT_BASE                     ; Base
   times 0x10 - ($ - idt64_descriptor) db 0
 
-; ===== Boot info passed to kernel
-boot_info:
-  .magic: dq 0xDEADBEEF
+%include "src/boot/bootinfo.asm"
