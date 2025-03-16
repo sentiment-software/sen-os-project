@@ -20,7 +20,7 @@ boot1_main:
 
   ; Enable Protected Mode
   mov eax, cr0
-  or eax, CR0_PE_BIT
+  or eax, (1 << BIT_CR0_PE)
   mov cr0, eax
 
   ; Jump to protected mode code
@@ -51,18 +51,11 @@ protected_mode_entry:
   mov ss, ax
   mov esp, PM_STACK_TOP
 
-  call clear32
-
-  mov ebx, msg_protected_mode_enabled
-  call println32
-
-  ; Test CPUID.ID
   call cpuid_supported
   test eax, eax
   jz .cpuid_not_supported
 
-  ; Test CPUID.MODE64
-  call cpuid_has_mode64
+  call cpuid_test_all_mode64
   test eax, eax
   jz .mode64_not_supported
 
@@ -88,18 +81,18 @@ enable_long_mode:
 
   ; Enable PAE and PGE
   mov eax, cr4
-  or eax, CR4_PAE_BIT | CR4_PGE_BIT
+  or eax, (1 << BIT_CR4_PAE) | (1 << BIT_CR4_PGE)
   mov cr4, eax
 
   ; Enable Long Mode in EFER
-  mov ecx, EFER_MSR
+  mov ecx, MSR_EFER
   rdmsr
-  or eax, EFER_LME_BIT
+  or eax, (1 << BIT_EFER_LME)
   wrmsr
 
   ; Enable paging
   mov eax, cr0
-  or eax, CR0_PG_BIT
+  or eax, (1 << BIT_CR0_PG)
   mov cr0, eax
 
   ; Jump to 64-bit code segment
@@ -112,7 +105,6 @@ enable_long_mode:
 %include "src/boot/mode32/pic.asm"
 %include "src/boot/mode32/idt.asm"
 ; ===== Messages (mode 32)
-msg_protected_mode_enabled: db 'Protected Mode Enabled!', 0
 msg_cpuid_unsupported: db 'CPUID not supported', 0
 msg_mode64_unsupported: db 'Long mode not supported', 0
 
@@ -136,9 +128,6 @@ long_mode_entry:
   ; Load IDT
   lidt [idt64_descriptor]
 
-  mov ebx, msg_long_mode_enabled
-  call println
-
   ; Load boot info
   call cpuid_read_all
 
@@ -157,8 +146,6 @@ long_mode_entry:
 %include "src/boot/mode64/print64.asm"
 %include "src/boot/mode64/isr64.asm"
 %include "src/boot/mode64/cpuid64.asm"
-; ===== Messages (mode 64)
-msg_long_mode_enabled: db 'Long mode enabled!', 0
 
 ; ===== Align Boot Stage 1 on the next 4kB boundary, 0x2000
 times 4096 - ($ - $$) db 0

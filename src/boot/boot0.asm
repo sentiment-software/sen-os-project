@@ -36,7 +36,7 @@ boot0_main:
   push bx
   push word 0
   push word KERN_SECTOR
-  push word 2 ;(KERN_SIZE / 512)
+  push word 8 ; TODO: load kernel dynamically by size
   push word KERN_BASE
   push word SEG_ZERO
   call load16

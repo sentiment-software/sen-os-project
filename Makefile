@@ -14,13 +14,14 @@ QEMU = qemu-system-x86_64
 
 # Build Flags
 ASMFLAGS = -f bin
-CFLAGS = -ffreestanding -mno-red-zone -Wall -Wextra -c
+CFLAGS = -ffreestanding -mno-red-zone -Wall -Wextra -c -O0
 LINKER_SCRIPT = $(BUILD_DIR)\kernel.ld
 LDFLAGS = -T $(LINKER_SCRIPT) -nostdlib
 
 # Run Flags
 EMU_DRIVE = -drive format=raw,file=$<
-EMU_CPU = Skylake-Client-v4
+EMU_CPU = -cpu Skylake-Client-v4
+EMU_SMP = -smp 16,sockets=1,cores=8,threads=2
 
 # Files
 BOOT0_SRC = $(BOOT_DIR)\boot0.asm
@@ -51,7 +52,7 @@ clean:
 
 .PHONY: run
 run: $(OS_BIN)
-	$(QEMU) $(EMU_DRIVE) -cpu $(EMU_CPU)
+	$(QEMU) $(EMU_DRIVE) $(EMU_CPU) $(EMU_SMP)
 
 # Build os.bin flat binary by merging binary components
 $(OS_BIN): $(BOOT0_BIN) $(BOOT1_BIN) $(KERNEL_BIN) $(NULL_BIN)
