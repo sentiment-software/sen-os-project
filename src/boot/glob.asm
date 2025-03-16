@@ -1,7 +1,5 @@
 %include "src/boot/definitions/memorymap.asm"
 
-[org GLOB_BASE]
-
 ; ===== 32-bit Global Descriptor Table =====
 gdt32:
   dq 0x0000000000000000          ; Null descriptor
@@ -56,13 +54,13 @@ gdt64:
 gdt32_descriptor:
   dw GDT32_SIZE - 1  ; Limit
   dd GDT32_BASE      ; Base
-  times 0x10 - ($ - gdt32_descriptor) db 0
+  times 0x8 - ($ - gdt32_descriptor) db 0
 
 ; ===== 64-bit GDTD =====
 gdt64_descriptor:
   dw GDT64_SIZE - 1  ; Limit
   dd GDT64_BASE      ; Base
-  times 0x10 - ($ - gdt64_descriptor) db 0
+  times 0x8 - ($ - gdt64_descriptor) db 0
 
 ; ===== 64-bit IDTD =====
 idt64_descriptor:
@@ -70,5 +68,4 @@ idt64_descriptor:
   dq IDT_BASE                     ; Base
   times 0x10 - ($ - idt64_descriptor) db 0
 
-; ===== Align on a 4kB (0x1000) boundary
-times 4096 - ($ - $$) db 0
+%include "src/boot/bootinfo.asm"
