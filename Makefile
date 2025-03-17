@@ -13,7 +13,8 @@ LD = x86_64-elf-ld
 QEMU = qemu-system-x86_64
 
 # Build Flags
-ASMFLAGS = -f bin
+ASM_BIN_FLAGS = -f bin -o $@ $<
+ASM_ELF_FLAGS = -f elf64 -o $@ $<
 CFLAGS = -ffreestanding -mno-red-zone -Wall -Wextra -c -O0
 LINKER_SCRIPT = $(BUILD_DIR)\kernel.ld
 LDFLAGS = -T $(LINKER_SCRIPT) -nostdlib
@@ -27,14 +28,16 @@ EMU_SMP = -smp 16,sockets=1,cores=8,threads=2
 BOOT0_SRC = $(BOOT_DIR)\boot0.asm
 BOOT1_SRC = $(BOOT_DIR)\boot1.asm
 NULL_SRC = $(BOOT_DIR)\null.asm
-KERNEL_SRC = $(KERNEL_DIR)\kernel.c
+KERNEL_ASM_SRC = $(KERNEL_DIR)\kernel.asm
+KERNEL_C_SRC = $(KERNEL_DIR)\kernel.c
 CONSOLE_SRC = $(KERNEL_DIR)\console\console.c
 CONSOLE_HDR = $(KERNEL_DIR)\console\console.h
+CPUINFO_ASM_SRC = $(KERNEL_DIR)\cpu\CpuInfo.asm
 
 BOOT0_BIN = $(TARGET_DIR)\boot0.bin
 BOOT1_BIN = $(TARGET_DIR)\boot1.bin
 NULL_BIN = $(TARGET_DIR)\null.bin
-KERNEL_OBJS = $(TARGET_DIR)\kernel.o $(TARGET_DIR)\console.o
+KERNEL_OBJS = $(TARGET_DIR)\CpuInfo_asm.o $(TARGET_DIR)\kernel_asm.o $(TARGET_DIR)\kernel.o $(TARGET_DIR)\console.o
 KERNEL_BIN = $(TARGET_DIR)\kernel.bin
 OS_BIN = $(TARGET_DIR)\os.bin
 
@@ -42,6 +45,10 @@ BOOT0_DIS = $(TARGET_DIR)\$(DEBUG_DIR)\boot0.dis
 BOOT1_DIS = $(TARGET_DIR)\$(DEBUG_DIR)\boot1.dis
 KERNEL_DIS = $(TARGET_DIR)\$(DEBUG_DIR)\kernel.dis
 OS_DIS = $(TARGET_DIR)\$(DEBUG_DIR)\os.dis
+
+# ====================================================================================================
+# PHONY TARGETS
+# ====================================================================================================
 
 .PHONY: all
 all: clean $(OS_BIN) $(OS_DIS) debug-all
@@ -54,33 +61,12 @@ clean:
 run: $(OS_BIN)
 	$(QEMU) $(EMU_DRIVE) $(EMU_CPU) $(EMU_SMP)
 
-# Build os.bin flat binary by merging binary components
-$(OS_BIN): $(BOOT0_BIN) $(BOOT1_BIN) $(KERNEL_BIN) $(NULL_BIN)
-	copy $(BOOT0_BIN)/B + $(BOOT1_BIN)/B + $(KERNEL_BIN)/B + $(NULL_BIN)/B $(OS_BIN)/B
+.PHONY: debug-all
+debug-all: $(BOOT0_DIS) $(BOOT1_DIS) $(KERNEL_DIS) $(OS_DIS)
 
-# Assemble boot0.asm
-$(BOOT0_BIN): $(BOOT0_SRC) | $(TARGET_DIR)
-	$(ASM) $(ASMFLAGS) -o $@ $<
-
-# Assemble boot1.asm
-$(BOOT1_BIN): $(BOOT1_SRC) | $(TARGET_DIR)
-	$(ASM) $(ASMFLAGS) -o $@ $<
-
-# Assemble null.asm (hack padding temporarily)
-$(NULL_BIN): $(NULL_SRC) | $(TARGET_DIR)
-	$(ASM) $(ASMFLAGS) -o $@ $<
-
-# Link kernel objects into kernel.bin
-$(KERNEL_BIN): $(KERNEL_OBJS) $(LINKER_SCRIPT)
-	$(LD) $(LDFLAGS) -o $@ $(KERNEL_OBJS)
-
-# Compile kernel.c
-$(TARGET_DIR)\kernel.o: $(KERNEL_SRC) $(CONSOLE_HDR) | $(TARGET_DIR)
-	$(CC) $(CFLAGS) -o $@ $<
-
-# Compile console.c
-$(TARGET_DIR)\console.o: $(CONSOLE_SRC) $(CONSOLE_HDR) | $(TARGET_DIR)
-	$(CC) $(CFLAGS) -Wno-int-conversion -o $@ $<
+# ====================================================================================================
+# DIRECTORY TARGETS
+# ====================================================================================================
 
 # Create build directory
 $(TARGET_DIR):
@@ -90,8 +76,57 @@ $(TARGET_DIR):
 $(DEBUG_DIR): $(TARGET_DIR)
 	if not exist $<\$@ mkdir $<\$@
 
-# Generate all debug objects
-debug-all: $(BOOT0_DIS) $(BOOT1_DIS) $(KERNEL_DIS) $(OS_DIS)
+# ====================================================================================================
+# BOOT TARGETS
+# ====================================================================================================
+
+# Assemble boot0.asm
+$(BOOT0_BIN): $(BOOT0_SRC) | $(TARGET_DIR)
+	$(ASM) $(ASM_BIN_FLAGS)
+
+# Assemble boot1.asm
+$(BOOT1_BIN): $(BOOT1_SRC) | $(TARGET_DIR)
+	$(ASM) $(ASM_BIN_FLAGS)
+
+# Assemble null.asm (hack padding temporarily)
+$(NULL_BIN): $(NULL_SRC) | $(TARGET_DIR)
+	$(ASM) $(ASM_BIN_FLAGS)
+
+# ====================================================================================================
+# KERNEL TARGETS
+# ====================================================================================================
+
+# Link kernel objects into kernel.bin
+$(KERNEL_BIN): $(KERNEL_OBJS) $(LINKER_SCRIPT)
+	$(LD) $(LDFLAGS) -o $@ $(KERNEL_OBJS)
+
+# Assemble kernel.asm
+$(TARGET_DIR)\kernel_asm.o: $(KERNEL_ASM_SRC) | $(TARGET_DIR)
+	$(ASM) $(ASM_ELF_FLAGS)
+
+# Assemble CpuInfo.asm
+$(TARGET_DIR)\CpuInfo_asm.o: $(CPUINFO_ASM_SRC) | $(TARGET_DIR)
+	$(ASM) $(ASM_ELF_FLAGS)
+
+# Compile kernel.c
+$(TARGET_DIR)\kernel.o: $(KERNEL_C_SRC) $(CONSOLE_HDR) | $(TARGET_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Compile console.c
+$(TARGET_DIR)\console.o: $(CONSOLE_SRC) $(CONSOLE_HDR) | $(TARGET_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# ====================================================================================================
+# OS IMAGE TARGETS
+# ====================================================================================================
+
+# Build OS image flat binary
+$(OS_BIN): $(BOOT0_BIN) $(BOOT1_BIN) $(KERNEL_BIN) $(NULL_BIN)
+	copy $(BOOT0_BIN)/B + $(BOOT1_BIN)/B + $(KERNEL_BIN)/B + $(NULL_BIN)/B $(OS_BIN)/B
+
+# ====================================================================================================
+# DEBUG TARGETS
+# ====================================================================================================
 
 # Disassemble boot0.bin
 $(BOOT0_DIS): $(BOOT0_BIN) | $(DEBUG_DIR)

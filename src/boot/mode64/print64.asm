@@ -1,4 +1,4 @@
-%include "src/boot/definitions/vga.asm"
+%include "src/definitions/vga.asm"
 
 [bits 64]
 

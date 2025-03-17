@@ -1,6 +1,6 @@
-%include "src/boot/definitions/memorymap.asm"
-%include "src/boot/definitions/registers.asm"
-%include "src/boot/definitions/segments.asm"
+%include "src/definitions/memorymap.asm"
+%include "src/definitions/registers.asm"
+%include "src/definitions/segments.asm"
 
 [bits 16]
 [org BOOT_1_BASE]
@@ -128,12 +128,6 @@ long_mode_entry:
   ; Load IDT
   lidt [idt64_descriptor]
 
-  ; Load boot info
-  call cpuid_read_all
-
-  ; Push boot info for kernel
-  mov rdi, boot_info
-
   ; Jump to kernel
   jmp KERN_BASE
 
@@ -145,7 +139,6 @@ long_mode_entry:
 ; ===== Includes (mode 64)
 %include "src/boot/mode64/print64.asm"
 %include "src/boot/mode64/isr64.asm"
-%include "src/boot/mode64/cpuid64.asm"
 
 ; ===== Align Boot Stage 1 on the next 4kB boundary, 0x2000
 times 4096 - ($ - $$) db 0

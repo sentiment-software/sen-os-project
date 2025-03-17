@@ -1,21 +1,30 @@
-%include "src/boot/definitions/cpuid.asm"
-%include "src/boot/definitions/bootinfo.asm"
+%include "src/definitions/cpuinfo.asm"
+%include "src/definitions/cpuid.asm"
+%include "src/definitions/registers.asm"
 
 [bits 64]
 
+global cpuidReadAll
+global cpuidReadLeafBasic0
+global cpuidReadLeafBasic1
+global cpuidReadLeafExtf0
+global cpuidReadLeafExtf1
+global cpuidReadTopology
+
+section .text
 ; --------------------------------------------------
 ; cpuid_read_all: Reads all required CPUID leafs for boot info
-cpuid_read_all:
-  call cpuid_read_leaf_basic_0
-  call cpuid_read_leaf_basic_1
-  call cpuid_read_leaf_extf_0
-  call cpuid_read_leaf_extf_1
-  call cpuid_enumerate_topology
+cpuidReadAll:
+  call cpuidReadLeafBasic0
+  call cpuidReadLeafBasic1
+  call cpuidReadLeafExtf0
+  call cpuidReadLeafExtf1
+  call cpuidReadTopology
   ret
 
 ; --------------------------------------------------
 ; cpuid_read_leaf_basic_0: Reads the Basic Information Leaf 0 (0x0).
-cpuid_read_leaf_basic_0:
+cpuidReadLeafBasic0:
   push rax
   push rbx
   push rcx
@@ -23,11 +32,11 @@ cpuid_read_leaf_basic_0:
 
   mov eax, CPUID_LEAF_BASIC_0
   cpuid
-  mov dword [boot_info.cpuid_max_basic], eax
-  mov dword [boot_info.cpu_vendor_id], ebx
-  mov dword [boot_info.cpu_vendor_id + 4], edx
-  mov dword [boot_info.cpu_vendor_id + 8], ecx
-  mov dword [boot_info.cpu_vendor_id + 12], 0  ; Terminate string and pad to qword
+  mov dword [CpuInfo.cpuidMaxLeafBasic], eax
+  mov dword [CpuInfo.vendorString], ebx
+  mov dword [CpuInfo.vendorString + 4], edx
+  mov dword [CpuInfo.vendorString + 8], ecx
+  mov dword [CpuInfo.vendorString + 12], 0  ; Terminate string and pad to qword
 
   .return:
     pop rdx
@@ -38,7 +47,7 @@ cpuid_read_leaf_basic_0:
 
 ; --------------------------------------------------
 ; cpuid_read_leaf_basic_1: Reads the Basic Information Leaf 1 (0x1).
-cpuid_read_leaf_basic_1:
+cpuidReadLeafBasic1:
   push rax
   push rbx
   push rcx
@@ -47,21 +56,21 @@ cpuid_read_leaf_basic_1:
   mov eax, CPUID_LEAF_BASIC_FEATURE
   cpuid
 
-  mov dword [boot_info.cpu_version_info], eax
-  mov byte [boot_info.cpu_brand_index], bl
-  mov byte [boot_info.cpu_clflush_size], bh
-  mov dword [boot_info.cpu_features], ecx
-  mov dword [boot_info.cpu_features + 4], edx
+  mov dword [CpuInfo.versionInfo], eax
+  mov byte [CpuInfo.brandIndex], bl
+  mov byte [CpuInfo.cflushSize], bh
+  mov dword [CpuInfo.featureBasic], ecx
+  mov dword [CpuInfo.featureBasic + 4], edx
 
   shr ebx, 16
   and ebx, 0xFF
-  mov byte [boot_info.cpu_leg_lp_count], bl
+  mov byte [CpuInfo.legacyCountLp], bl
   bt edx, CPUID_BIT_APIC
   jnc .return
   mov eax, CPUID_LEAF_BASIC_FEATURE
   cpuid
   shr ebx, 24
-  mov byte [boot_info.cpu_leg_apic_id], bl
+  mov byte [CpuInfo.legacyApicId], bl
   jmp .return
 
   .return:
@@ -73,7 +82,7 @@ cpuid_read_leaf_basic_1:
 
 ; --------------------------------------------------
 ; cpuid_read_leaf_extf_0: Reads the Extended Function Leaf 0 (0x80000000).
-cpuid_read_leaf_extf_0:
+cpuidReadLeafExtf0:
   push rax
   push rbx
   push rcx
@@ -81,7 +90,7 @@ cpuid_read_leaf_extf_0:
 
   mov eax, CPUID_LEAF_EXTF_0
   cpuid
-  mov dword [boot_info.cpuid_max_extf], eax
+  mov dword [CpuInfo.cpuidMaxLeafExtf], eax
 
   pop rdx
   pop rcx
@@ -91,21 +100,21 @@ cpuid_read_leaf_extf_0:
 
 ; --------------------------------------------------
 ; cpuid_read_leaf_extf_1: Reads the Extended Function Leaf 1 (0x80000001).
-cpuid_read_leaf_extf_1:
+cpuidReadLeafExtf1:
   push rax
   push rbx
   push rcx
   push rdx
-  
+
   mov eax, CPUID_LEAF_EXTF_1
   cpuid
 
-  mov dword [boot_info.cpu_extf_sig], eax
+  mov dword [CpuInfo.sigExtf], eax
   xor eax, eax
   .test_lahf64:
     bt ecx, CPUID_BIT_LAHF64
     jnc .test_lzcnt
-    or eax, INFO_CPU_EXTF_LAHF_64
+    or eax, INFO_CPU_EXTF_LAHF64
   .test_lzcnt:
     bt ecx, CPUID_BIT_LZCNT
     jnc .test_prefetchw
@@ -133,9 +142,9 @@ cpuid_read_leaf_extf_1:
   .test_intel64:
     bt edx, CPUID_BIT_INTEL64
     jnc .return
-    or eax, INFO_CPU_EXTF_INTEL_64
+    or eax, INFO_CPU_EXTF_INTEL64
   .return:
-    mov byte [boot_info.cpu_extf], al
+    mov byte [CpuInfo.featureExt], al
     pop rdx
     pop rcx
     pop rbx
@@ -143,11 +152,11 @@ cpuid_read_leaf_extf_1:
     ret
 
 ; --------------------------------------------------
-; cpuid_enumerate_topology:
+; cpuidReadTopology:
 ;   Algorithm to enumerate the CPU topology.
 ;   Based on the Intel 64 architecture processor topology enumeration document.
-;   Requires boot_info.cpuid_max_basic to be loaded.
-cpuid_enumerate_topology:
+;   Requires CpuInfo.cpuidMaxLeafBasic to be loaded.
+cpuidReadTopology:
   push rax
   push rbx
   push rcx
@@ -162,7 +171,7 @@ cpuid_enumerate_topology:
   wrmsr
 
   .test_max_1f:
-    cmp dword [boot_info.cpuid_max_basic], CPUID_LEAF_EXT_TOPOLOGY_V2
+    cmp dword [CpuInfo.cpuidMaxLeafBasic], CPUID_LEAF_EXT_TOPOLOGY_V2
     jb .test_max_b
     mov eax, CPUID_LEAF_EXT_TOPOLOGY_V2
     xor ecx, ecx
@@ -171,7 +180,7 @@ cpuid_enumerate_topology:
     jnz .enum_leaf_ext_topology_v2
 
   .test_max_b:
-    cmp dword [boot_info.cpuid_max_basic], CPUID_LEAF_EXT_TOPOLOGY
+    cmp dword [CpuInfo.cpuidMaxLeafBasic], CPUID_LEAF_EXT_TOPOLOGY
     jb .test_max_4
     mov eax, CPUID_LEAF_EXT_TOPOLOGY
     xor ecx, ecx
@@ -180,7 +189,7 @@ cpuid_enumerate_topology:
     jnz .enum_leaf_ext_topology_v1
 
   .test_max_4:
-    cmp dword [boot_info.cpuid_max_basic], 0x4
+    cmp dword [CpuInfo.cpuidMaxLeafBasic], 0x4
     jb .return ; Legacy branch is already tested in Leaf 0x1. TODO: implement here later to decouple routines
     jmp .return ; TODO: jmp .enum_leaf_1_4
 
@@ -189,7 +198,7 @@ cpuid_enumerate_topology:
     xor ecx, ecx
     jmp .enum_loop
 
-  .enum_leaf_ext_topology_v1:
+  .enum_leaf_ext_topology_v1: ; TODO: when reading 0xB leaf, the # of max domains are 2 (level 1, 2), other values are invalid
     mov eax, CPUID_LEAF_EXT_TOPOLOGY
     xor ecx, ecx
     ; Flow to .enum_loop
@@ -208,11 +217,11 @@ cpuid_enumerate_topology:
     and eax, 0xF             ; Prepare Shift value
     cmp ebx, CPU_DOMAIN_LP   ; If Domain Type in ECX[15:8] is "Logical Processor"
     je .enum_loop_lp         ; Then save the logical processor shift value
-    mov byte [boot_info.cpu_core_shift], al ; Else save the core shift value
+    mov byte [CpuInfo.shiftCore], al ; Else save the core shift value
     jmp .enum_loop_inc
 
   .enum_loop_lp:
-    mov byte [boot_info.cpu_lp_shift], al
+    mov byte [CpuInfo.shiftLp], al
 
   .enum_loop_inc:
     pop rcx                   ; Restore input (ECX)
@@ -230,3 +239,23 @@ cpuid_enumerate_topology:
     pop rax
     ret
 
+section .data
+global CpuInfo
+
+CpuInfo:
+  .cpuidMaxLeafBasic: dd 0             ; Maximum input value for CPUID Basic Information leaves
+  .cpuidMaxLeafExtf: dd 0              ; Maximum input value for CPUID Extended Features leaves
+  .vendorString:                       ; CPU Vendor String (12 bytes + 1 byte termination + 3 bytes align)
+    times 16 db 0
+  .versionInfo: dd 0                   ; CPU Type, Family, Model, Stepping ID
+  .brandIndex: db 0                    ; Brand Index
+  .cflushSize: db 0                    ; CLFLUSH line size (Value * 8 = cache line size)
+  .featureBasic:                       ; Basic processor features
+    dd 0
+    dd 0
+  .sigExtf: dd 0                       ; Extended Processor Signature and Feature Bits
+  .featureExt: db 0                    ; Extended processor features
+  .shiftLp: db 0                       ; The logical processor shift value
+  .shiftCore: db 0                     ; The core shift value
+  .legacyApicId: db 0                  ; Legacy APIC ID if present
+  .legacyCountLp: db 0                 ; Legacy LP count if present

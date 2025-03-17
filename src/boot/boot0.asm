@@ -1,5 +1,5 @@
-%include "src/boot/definitions/memorymap.asm"
-%include "src/boot/definitions/segments.asm"
+%include "src/definitions/memorymap.asm"
+%include "src/definitions/segments.asm"
 
 [org 0x7C00]
 [bits 16]

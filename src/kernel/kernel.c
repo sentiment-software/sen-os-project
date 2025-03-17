@@ -1,47 +1,46 @@
 #include "console/console.h"
 
-typedef struct {
-  unsigned long magic;
-  unsigned int cpuBasicMax;
-  unsigned int cpuExtMax;
-  unsigned char cpuVendorId[16];
-  unsigned int cpuVersionInfo;
-  unsigned char cpuBrandIndex;
-  unsigned char cpuCflushSize;
-  unsigned char cpuLegacyMaxApicId;
-  unsigned long cpuBasicFeatures;
-  unsigned int cpuExtSignature;
-  unsigned char cpuExtFeatures;
-  unsigned char cpuLpShift;
-  unsigned char cpuCoreShift;
-  unsigned char cpuApicId;
-  unsigned char cpuLpCount;
-}__attribute__((packed)) BootInfo;
+extern struct {
+  unsigned int cpuidMaxLeafBasic;
+  unsigned int cpuidMaxLeafExtf;
+  unsigned char vendorString[16];
+  unsigned int versionInfo;
+  unsigned char brandIndex;
+  unsigned char cflushSize;
+  unsigned long featureBasic;
+  unsigned int sigExtf;
+  unsigned char featureExt;
+  unsigned char shiftLp;
+  unsigned char shiftCore;
+  unsigned char legacyApicId;
+  unsigned char legacyCountLp;
+} CpuInfo __attribute__((packed));
+
+extern void kernel_entry(void); // ASM kernel entry for the linker
 
 /**
  * Kernel entry point.
  */
-__attribute__((section(".text.kmain")))
-void kmain(BootInfo* bootInfo) {
+//__attribute__((section(".text.kmain")))
+void kmain() {
   console_init();
-  console_println("Kernel Booted!");
-  console_print("Boot Magic: ");
-  console_print_hex(bootInfo->magic, 16);
-  console_print("\nCPUID: Max Basic: ");
-  console_print_hex(bootInfo->cpuBasicMax, 8);
-  console_print(", Max Ext: ");
-  console_print_hex(bootInfo->cpuExtMax, 8);
-  console_print("\nCPU: ");
-  console_print(bootInfo->cpuVendorId);
-  console_print(", ");
-  console_print_hex(bootInfo->cpuVersionInfo, 8);
-  console_print("\nLP-Shift: ");
-  console_print_hex(bootInfo->cpuLpShift, 2);
-  console_print(", Core-Shift: ");
-  console_print_hex(bootInfo->cpuCoreShift, 2);
-  console_print("\nLeaf 1: APIC-ID: ");
-  console_print_dec(bootInfo->cpuApicId);
-  console_print(", LP#: ");
-  console_print_dec(bootInfo->cpuLpCount);
+  console_println("Kernel loaded!");
+  console_print("CPUID Max Leaf: Basic [");
+  console_print_hex(CpuInfo.cpuidMaxLeafBasic, 8);
+  console_print("], Ext [");
+  console_print_hex(CpuInfo.cpuidMaxLeafExtf, 8);
+  console_print("]\nCPU: ");
+  console_print(CpuInfo.vendorString);
+  console_print(" [");
+  console_print_hex(CpuInfo.versionInfo, 8);
+  console_print("]\nShift: LP [");
+  console_print_hex(CpuInfo.shiftLp, 2);
+  console_print("], Core [");
+  console_print_hex(CpuInfo.shiftCore, 2);
+  console_print("]\nLegacy: APIC ID [");
+  console_print_dec(CpuInfo.legacyApicId);
+  console_print("], LP# [");
+  console_print_dec(CpuInfo.legacyCountLp);
+  console_print("]");
   for (;;);
 }

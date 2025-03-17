@@ -1,12 +1,12 @@
-OUTPUT_FORMAT(binary)       /* Flat binary for booting */
-OUTPUT_ARCH(i386:x86-64)    /* x86-64 target */
-ENTRY(kmain)                /* Start at kmain */
+OUTPUT_FORMAT(binary)                  /* Flat binary for booting */
+OUTPUT_ARCH(i386:x86-64)               /* x86-64 target */
+ENTRY(kernel_entry)                    /* Start at kernel_entry */
 
 SECTIONS {
-    . = 0xA000;                    /* Kernel base address at 0xA0000 */
+    . = 0xA000;                        /* Kernel base address at 0xA000 */
     .text : {
-        KEEP(*(.text.kmain))   /* Force kernel_entry first */
-        *(.text*)              /* Other code follows */
+        KEEP(*(.text.kernel_entry))    /* Force kernel_entry first */
+        *(.text*)                      /* Other code follows */
     }
     .data : { *(.data) }
     .bss : { *(.bss) }

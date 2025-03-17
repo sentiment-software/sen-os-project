@@ -1,5 +1,5 @@
-%include "src/boot/definitions/cpuid.asm"
-%include "src/boot/definitions/registers.asm"
+%include "src/definitions/cpuid.asm"
+%include "src/definitions/registers.asm"
 
 [bits 32]
 

@@ -1,4 +1,4 @@
-%include "src/boot/definitions/memorymap.asm"
+%include "src/definitions/memorymap.asm"
 
 ; ===== 32-bit Global Descriptor Table =====
 gdt32:
@@ -67,5 +67,3 @@ idt64_descriptor:
   dw IDT_SIZE - 1                 ; Limit
   dq IDT_BASE                     ; Base
   times 0x10 - ($ - idt64_descriptor) db 0
-
-%include "src/boot/bootinfo.asm"

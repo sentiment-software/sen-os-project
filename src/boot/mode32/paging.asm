@@ -1,5 +1,5 @@
-%include "src/boot/definitions/memorymap.asm"
-%include "src/boot/definitions/paging.asm"
+%include "src/definitions/memorymap.asm"
+%include "src/definitions/paging.asm"
 
 [bits 32]
 

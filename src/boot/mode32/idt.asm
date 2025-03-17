@@ -1,4 +1,4 @@
-%include "src/boot/definitions/memorymap.asm"
+%include "src/definitions/memorymap.asm"
 
 [bits 32]
 

@@ -1,4 +1,4 @@
-%include "src/boot/definitions/disk.asm"
+%include "src/definitions/disk.asm"
 
 [bits 16]
 

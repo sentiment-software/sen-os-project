@@ -1,4 +1,4 @@
-%include "src/boot/definitions/pic.asm"
+%include "src/definitions/pic.asm"
 
 [bits 32]
 
