@@ -18,11 +18,8 @@ boot0_main:
   mov ss, ax
   mov sp, BOOT_STACK_TOP
 
-  ; Save the boot disk number
-  mov bx, dx
-
   ; Load Boot Stage 1 & Global Structures at 0x1000
-  push bx                                        ; Pass disk number of bootable disk
+  push dx                                        ; Pass disk number of bootable disk
   push word 0                                    ; Pass start sector (upper 16 bits)
   push word BOOT_1_SECTOR                        ; Pass start sector (lower 16 bits)
   push word ((BOOT_1_SIZE + GLOB_SIZE) / 512)    ; Pass sector count
@@ -30,33 +27,16 @@ boot0_main:
   push word SEG_ZERO                             ; Pass target buffer segment
   call load16                                    ; Read upper boot stages from disk
   test al, al                                    ; If AX <> 0x0 then disk read failed
-  jnz .errorBoot
+  jnz .error
 
-  ; Load Kernel at 0xA000
-  push bx
-  push word 0
-  push word KERN_SECTOR
-  push word 8 ; TODO: load kernel dynamically by size
-  push word KERN_BASE
-  push word SEG_ZERO
-  call load16
-  test al, al
-  jnz .errorKernel
-
-  ; Jump to Boot Stage 1
   jmp SEG_ZERO:BOOT_1_BASE
 
   .halt:
     cli
     hlt
-    jmp .halt
 
-  .errorBoot:
+  .error:
     mov si, msg_error_boot
-    jmp .printError
-  .errorKernel:
-    mov si, msg_error_kern
-  .printError:
     call print16
     call printhex16
     jmp .halt
@@ -65,7 +45,8 @@ boot0_main:
 ; ===== Includes
 %include "src/boot/mode16/disk16.asm"
 %include "src/boot/mode16/print16.asm"
-msg_error_kern: db 'Error loading kernel: ', 0
+
+; ===== Messages
 msg_error_boot: db 'Error loading boot: ', 0
 
 ; ===== Align on a 512 byte boundary

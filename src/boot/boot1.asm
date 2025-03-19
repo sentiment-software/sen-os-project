@@ -60,7 +60,7 @@ protected_mode_entry:
   jz .mode64_not_supported
 
   call init_pages
-  call remap_pic
+  ;call remap_pic
   call setup_idt
   jmp enable_long_mode
 
@@ -121,12 +121,16 @@ long_mode_entry:
   mov ss, ax
   mov rsp, KERN_STACK_TOP
 
-  ; Load TSS
   mov ax, SEG_TSS
   ltr ax
 
-  ; Load IDT
   lidt [idt64_descriptor]
+
+  ; Load kernel into higher memory address
+  mov rdi, KERN_BASE
+  mov rbx, KERN_SECTOR
+  mov rsi, 10
+  call load64
 
   ; Jump to kernel
   jmp KERN_BASE
@@ -138,6 +142,7 @@ long_mode_entry:
 
 ; ===== Includes (mode 64)
 %include "src/boot/mode64/print64.asm"
+%include "src/boot/mode64/disk64.asm"
 %include "src/boot/mode64/isr64.asm"
 
 ; ===== Align Boot Stage 1 on the next 4kB boundary, 0x2000
